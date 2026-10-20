@@ -399,6 +399,9 @@ pub struct Prefs {
     pub agent_chat_window: Option<[f32; 4]>,
     /// Changes the agent may make for one message.
     pub agent_chat_turn_limit: u32,
+    /// External agents (MCP clients you run yourself) may control SolidCraft through the control
+    /// channel on `mcp_port` (Preferences › AI › External agents, docs/mcp.md). Off by default.
+    pub mcp_enabled: bool,
 
     // ---- Sketch / selection modifier bindings (classic defaults; alternate mapping is opt-in) ----
     /// Modifier that suppresses sketch auto-snap while drawing or dragging a sketch point.
@@ -509,6 +512,8 @@ impl Default for Prefs {
             agent_chat_popped: false,
             agent_chat_window: None,
             agent_chat_turn_limit: crate::agent_chat::gate::DEFAULT_TURN_LIMIT,
+            mcp_enabled: false,
+            mcp_port: 7878,
             suppress_sketch_snap: ModifierCombo::CTRL_ALT,
             manipulator_free_alt: true,
             selection_shift_add_only: false,
@@ -760,6 +765,8 @@ fn defaults(app: &mut SolveApp, page: usize) {
             p.agent_chat_popped = d.agent_chat_popped;
             p.agent_chat_window = d.agent_chat_window;
             p.agent_chat_turn_limit = d.agent_chat_turn_limit;
+            p.mcp_enabled = d.mcp_enabled;
+            p.mcp_port = d.mcp_port;
         }
         1 => {
             p.nav = d.nav;
@@ -1935,6 +1942,9 @@ pub fn set(app: &mut SolveApp, p: &serde_json::Value) -> Result<serde_json::Valu
     }
     if new.disabled_plugins.len() > crate::plugins::MAX_DISABLED || new.disabled_plugins.iter().any(|id| !crate::plugins::valid_id(id)) {
         return Err(format!("`disabled_plugins` must be at most {} ids of lowercase letters, digits and hyphens", crate::plugins::MAX_DISABLED));
+    }
+    if !(1024..=65535).contains(&new.mcp_port) {
+        return Err("`mcp_port` must be 1024…65535".into());
     }
     if !(0.5..=2.5).contains(&new.ui_scale) || !(0.25..=4.0).contains(&new.look_at_speed) {
         return Err("`ui_scale` must be 0.5…2.5 and `look_at_speed` 0.25…4".into());

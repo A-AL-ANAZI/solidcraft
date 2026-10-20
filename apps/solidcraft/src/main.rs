@@ -629,7 +629,12 @@ fn main() -> eframe::Result {
             if let Some(port) = control_port {
                 let rx = control_server::start(port, cc.egui_ctx.clone());
                 app = app.with_control(rx);
+                app.agent_chat.external.listening = Some(port);
             }
+            // Preferences › AI › External agents: the same channel on the port chosen there,
+            // started when that setting is on, at launch or later.
+            let ctx = cc.egui_ctx.clone();
+            app.agent_chat.external.starter = Some(Box::new(move |port| control_server::start_on(port, ctx.clone())));
             // The agent chat's MCP bridge reaches the app through an endpoint of its own, started
             // on a free port the first time the chat connects (docs/agent-chat.md).
             let ctx = cc.egui_ctx.clone();

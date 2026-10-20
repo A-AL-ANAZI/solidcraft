@@ -26,6 +26,7 @@ pub mod attach;
 pub mod backend;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod discover;
+pub mod external;
 pub mod gate;
 mod markdown;
 mod markdown_view;
@@ -294,6 +295,8 @@ impl Loading {
 
 #[derive(Default)]
 pub struct AgentChat {
+    /// Preferences › AI › External agents: the control channel MCP clients connect to.
+    pub external: external::External,
     /// The panel is shown (View menu, the application bar's chat button, Ctrl+Shift+A).
     pub open: bool,
     pub items: Vec<Item>,

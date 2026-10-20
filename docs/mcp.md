@@ -29,6 +29,11 @@ solidcraft --control 7878 &
 solidcraft-cli mcp --connect 127.0.0.1:7878
 ```
 
+From the app, without a flag: **Preferences › AI › External agents (MCP)** starts the same channel
+on the port chosen there (7878 by default) and shows the line that adds SolidCraft to Hermes,
+OpenClaw, Claude Code or any client that reads an `mcpServers` JSON. The setting is kept, so the
+channel starts with every launch until it is turned off (which applies at the next start).
+
 Bridged, the server finds the app's control token in the token file the app wrote for that port
 ([control-protocol.md](control-protocol.md#token)); `--token T` or `SOLIDCRAFT_CONTROL_TOKEN` give
 it explicitly when the app runs in a sandbox whose data folder the server can't see (prefer the

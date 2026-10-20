@@ -50,6 +50,13 @@ pub fn start(port: u16, ctx: egui::Context) -> Receiver<ControlRequest> {
     rx
 }
 
+/// [`start`] for Preferences › AI › External agents: the requests, or why `port` can't be used.
+pub fn start_on(port: u16, ctx: egui::Context) -> Result<Receiver<ControlRequest>, String> {
+    let (tx, rx) = channel::<ControlRequest>();
+    let token = control_auth::env_token().or_else(new_token).ok_or("no random token available")?;
+    listen(port, token, tx, ctx, false).map(|_| rx).ok_or_else(|| format!("127.0.0.1:{port} is in use or can't be opened"))
+}
+
 /// The agent chat's own endpoint for its agent's MCP server (docs/agent-chat.md): a free loopback
 /// port with a fresh token of its own (never `SOLIDCRAFT_CONTROL_TOKEN`), written to the usual
 /// token file, where the MCP server finds it, so the token never passes through the agent. Its

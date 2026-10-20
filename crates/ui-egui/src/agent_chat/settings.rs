@@ -104,13 +104,13 @@ fn test_line(ui: &mut egui::Ui, t: &Option<&Test>) {
     }
 }
 
-fn section(ui: &mut egui::Ui, title: &str) {
+pub(super) fn section(ui: &mut egui::Ui, title: &str) {
     ui.add_space(10.0);
     ui.label(RichText::new(title).strong().size(13.0));
     ui.separator();
 }
 
-fn note(ui: &mut egui::Ui, text: &str) {
+pub(super) fn note(ui: &mut egui::Ui, text: &str) {
     let t = Tokens::get();
     ui.add(egui::Label::new(RichText::new(text).size(11.0).color(t.text_dim)).wrap());
 }
@@ -179,6 +179,8 @@ pub fn page(app: &mut SolveApp, ui: &mut egui::Ui) {
             }
         });
     }
+    #[cfg(not(target_arch = "wasm32"))]
+    super::external::section(app, ui);
     section(ui, tr("ui.ai_panel"));
     egui::Grid::new("sc_ai_panel_grid").num_columns(2).spacing([16.0, 6.0]).show(ui, |ui| {
         ui.label(tr("ui.agent_chat_side"));
