@@ -1241,11 +1241,11 @@ fn page(app: &mut SolveApp, ui: &mut egui::Ui, t: &Tokens) {
     egui::Grid::new(("sc_prefs_grid", app.prefs_window.section)).num_columns(2).spacing([16.0, 8.0]).show(ui, |ui| match app.prefs_window.section {
         0 => {
             ui.label(app.tr("ui.language"));
-            egui::ComboBox::from_id_salt("pref_language").selected_text(crate::i18n::Locale::for_language(&app.preferences.language).name()).show_ui(
+            egui::ComboBox::from_id_salt("pref_language").selected_text(crate::i18n::Locale::for_language(&app.preferences.language).display_name()).show_ui(
                 ui,
                 |ui| {
                     for locale in crate::i18n::LOCALES {
-                        let (id, label) = (locale.id, locale.name);
+                        let (id, label) = (locale.id, locale.display_name());
                         ui.selectable_value(&mut app.preferences.language, id.to_string(), label);
                     }
                 },
