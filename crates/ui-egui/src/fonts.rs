@@ -726,9 +726,7 @@ fn system_fallbacks() -> &'static SystemFonts {
         let chinese = find_system_chinese_font().filter(|bytes| cjk.as_ref() != Some(bytes));
         let hangul = HANGUL_FONT_CANDIDATES.iter().find_map(|path| try_read_font(std::path::Path::new(path)));
         let thai = THAI_FONT_CANDIDATES.iter().find_map(|path| try_read_font(std::path::Path::new(path)));
-        let hebrew = HEBREW_FONT_CANDIDATES
-            .iter()
-            .find_map(|path| try_read_font(std::path::Path::new(path)).filter(|bytes| covers(bytes, 'א')));
+        let hebrew = HEBREW_FONT_CANDIDATES.iter().find_map(|path| try_read_font(std::path::Path::new(path)).filter(|bytes| covers(bytes, 'א')));
         SystemFonts { cjk, chinese, hangul, thai, hebrew }
     })
 }
