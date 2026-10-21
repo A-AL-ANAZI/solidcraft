@@ -402,6 +402,7 @@ pub struct Prefs {
     /// External agents (MCP clients you run yourself) may control SolidCraft through the control
     /// channel on `mcp_port` (Preferences › AI › External agents, docs/mcp.md). Off by default.
     pub mcp_enabled: bool,
+    pub mcp_port: u16,
 
     // ---- Sketch / selection modifier bindings (classic defaults; alternate mapping is opt-in) ----
     /// Modifier that suppresses sketch auto-snap while drawing or dragging a sketch point.
