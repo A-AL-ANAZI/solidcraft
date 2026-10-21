@@ -2543,6 +2543,12 @@ mod ribbon_label_tests {
                         let galley = ribbon_button_galley(&painter, label, width, Color32::WHITE);
                         assert!(galley.rows.len() <= 2, "{}: {label}", command.id);
                         assert!(galley.size().x <= width + 0.01, "{}: {label}: {} > {width}", command.id, galley.size().x);
+                        // A right-to-left label is laid out in display order, so the reading-order checks
+                        // below do not apply to it; its fit and line count are checked above, and its order
+                        // by the bidi and Arabic layout tests.
+                        if crate::bidi::has_rtl(label) {
+                            continue;
+                        }
                         let first = galley.rows.first().unwrap().text();
                         let visible = first.strip_suffix('…').unwrap_or(&first);
                         assert!(label.starts_with(visible), "{}: {label} -> {first}", command.id);
