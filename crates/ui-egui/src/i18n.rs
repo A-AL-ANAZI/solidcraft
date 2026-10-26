@@ -164,7 +164,7 @@ impl Locale {
         if let Some(candidates) = ids.get(label) {
             // Preserve the old last-ID preference among available translations. A new
             // English-only alias must not hide a translation that already exists here.
-            if let Some(text) = candidates.iter().rev().find_map(|id| self.0.messages().get(*id)) {
+            if let Some(text) = candidates.iter().rev().find_map(|id| self.0.shown().get(*id)) {
                 return text;
             }
             if let Some(id) = candidates.last() {
