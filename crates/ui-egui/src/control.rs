@@ -516,9 +516,7 @@ fn dispatch_checked(app: &mut SolveApp, ctx: &egui::Context, method: &str, p: &V
 /// app's own level, since the session it leaves and the one it brings in each keep theirs.
 fn switch_checked(app: &mut SolveApp, ctx: &egui::Context, method: &str, p: &Value, level: ParamCheck) -> Outcome {
     let id = command(p).unwrap_or_default();
-    let contract = solidcraft_engine::find_command(id).and_then(|c| c.contract);
-    let issues: Vec<String> =
-        contract.map(|c| c.check(p.get("params").unwrap_or(&Value::Null)).into_iter().map(|i| i.message).collect()).unwrap_or_default();
+    let issues: Vec<String> = solidcraft_engine::schema::issues(id, p.get("params").unwrap_or(&Value::Null)).into_iter().map(|i| i.message).collect();
     if level == ParamCheck::Strict
         && let Some(first) = issues.first()
     {

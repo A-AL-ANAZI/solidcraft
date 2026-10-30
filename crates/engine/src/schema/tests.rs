@@ -362,6 +362,16 @@ fn the_level_survives_a_new_design() {
 }
 
 #[test]
+fn issues_are_read_from_the_commands_own_contract() {
+    let issues = super::issues("solid.box", &json!({"length": 1, "width": 1, "height": 1, "operaton": "cut"}));
+    assert_eq!(messages(&issues), ["unknown key `operaton`; did you mean `operation`?"]);
+    assert_eq!(issues, box_contract().check(&json!({"length": 1, "width": 1, "height": 1, "operaton": "cut"})));
+    // No contract, or no such command: nothing to say.
+    assert!(super::issues("solid.fillet", &json!({"nonsense": 1})).is_empty());
+    assert!(super::issues("no.such", &json!({"nonsense": 1})).is_empty());
+}
+
+#[test]
 fn a_level_is_read_back_from_its_name() {
     for level in ParamCheck::ALL {
         assert_eq!(ParamCheck::parse(level.name()), Some(level));
