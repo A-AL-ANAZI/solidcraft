@@ -632,6 +632,7 @@ Original SolidCraft drawings, Open for owner review; no runtime assignments.
 | docs/book/src/generated/equation-parabola.png | SolidCraft contributors | rendered by `cargo xtask book` (`solidcraft-cli snapshot docs/book/scripts/equation-parabola.json`; gitignored) | MIT OR Apache-2.0 |
 | docs/book/src/generated/equation-spiral.png | SolidCraft contributors | rendered by `cargo xtask book` (`solidcraft-cli snapshot docs/book/scripts/equation-spiral.json`; gitignored) | MIT OR Apache-2.0 |
 | docs/book/src/generated/equation-wave.png | SolidCraft contributors | rendered by `cargo xtask book` (`solidcraft-cli snapshot docs/book/scripts/equation-wave.json`; gitignored) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/print_face.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
 
 ## Code adapted from sibling projects
 
