@@ -1339,6 +1339,8 @@ preference_settings! {
     /// release and end there (#7247); clicks still draw a chain. Off (the default): a drag is a
     /// click that moved on the way, placing a point where it is let go (#2448).
     line_drag_draws_one: bool = false, PAGE_SKETCH => check_id("prefs.line_drag_draws_one");
+    /// Include hidden geometry and a small pointer neighbourhood in Select Other.
+    select_other_hidden: bool = true, PAGE_SKETCH => check_id("prefs.select_other_hidden");
     /// When true: Shift+click adds without removing; Primary toggles.
     /// When false (default): Shift and Primary both toggle.
     selection_shift_add_only: bool = false, PAGE_SKETCH;
@@ -3493,6 +3495,9 @@ pub fn set(app: &mut SolveApp, p: &serde_json::Value) -> Result<serde_json::Valu
     if p.get("layout").is_some() {
         app.ui.layout = new.layout;
     }
+    if new.select_other_hidden != app.preferences.select_other_hidden {
+        crate::select_other::close(app);
+    }
     app.preferences = new;
     sync_surface_analysis(app);
     apply_file_limits(&app.preferences);
@@ -5030,6 +5035,7 @@ mod tests {
             ("nav", json!("blender"), PAGE_NAVIGATION),
             ("look_at_anim", json!(false), PAGE_NAVIGATION),
             ("selection_shift_add_only", json!(true), PAGE_SKETCH),
+            ("select_other_hidden", json!(false), PAGE_SKETCH),
             ("sketch_conflict_colour", json!(false), PAGE_SKETCH),
             ("suppress_sketch_snap", json!(ModifierCombo::NONE), PAGE_SKETCH),
             ("sketch_state_icons", json!(false), PAGE_SKETCH),

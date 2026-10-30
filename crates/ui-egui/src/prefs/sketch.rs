@@ -80,6 +80,8 @@ pub(super) fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
     ui_kit::settings_section(ui, "selection", app.tr("prefs.selecting"), |ui| {
         ui_kit::checkbox(ui, crate::i18n::tr_label("Click selects whole bodies"), &mut app.ui.pick_bodies);
         ui_kit::checkbox(ui, app.tr("prefs.prefer_free_sketch_points"), &mut app.preferences.prefer_free_sketch_points);
+        let hidden = setting::select_other_hidden(app, ui).on_hover_text(app.tr("prefs.select_other_hidden_help"));
+        crate::scenario::publish_target("prefs:select_other_hidden", hidden.rect);
         let click = app.tr("prefs.click");
         let shift = app.tr("prefs.shift");
         let ctrl = app.tr("prefs.ctrl_cmd");
