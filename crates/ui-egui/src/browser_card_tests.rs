@@ -268,7 +268,7 @@ fn card_and_column_keep_body_eyes_menus_and_group_drops() {
         h.step(&json!({"drag":[{"handle":"row:Two"},{"handle":"row:Group (1)"}]})).unwrap();
         h.settle();
         let group = h.app.session.doc.browser_groups.iter().find(|g| g.id == group).unwrap();
-        assert!(group.items.iter().any(|name| name == "Two"), "body drop into the folder failed in {mode:?}");
+        assert!(group.has_item("Two"), "body drop into the folder failed in {mode:?}");
     }
 }
 
@@ -796,4 +796,33 @@ fn an_eye_at_the_row_end_takes_its_click_from_the_scroll_bar() {
     h.settle();
     assert_eq!(h.app.session.visibility.hidden_sketches.len(), 1, "the eye hides its sketch");
     assert_eq!(handle_at("row:Sketch3"), Some(row), "the list did not scroll");
+}
+
+/// Dragging a group's row onto the middle of another group's row nests it; onto the top of a row
+/// puts it before that group. A group cannot be dropped into one of its own groups.
+#[test]
+fn a_group_dragged_onto_another_group_nests_in_it_or_goes_before_it() {
+    let mut h = Harness::new();
+    let ids: Vec<u64> = ["Alpha", "Beta", "Gamma"]
+        .into_iter()
+        .enumerate()
+        .map(|(i, name)| {
+            h.app.run("solid.box", json!({"length":10,"width":10,"height":10,"corner":[i as f64 * 20.0,0,0],"body_name":name})).unwrap();
+            h.app.run("browser.group", json!({"component":0,"folder":"bodies","items":[name],"name":name})).unwrap()["group"].as_u64().unwrap()
+        })
+        .collect();
+    let (alpha, beta, gamma) = (ids[0], ids[1], ids[2]);
+    h.settle();
+    let drag = |h: &mut Harness, from: &str, to: &str, dy: f32| {
+        let (from, to) = (handle_at(from).unwrap(), handle_at(to).unwrap());
+        assert_eq!(h.call("ui.drag", json!({"x0":from.x,"y0":from.y,"x1":to.x,"y1":to.y + dy,"steps":12}))["ok"], true);
+        h.settle();
+    };
+    let parent = |h: &Harness, id: u64| h.app.session.doc.browser_group(id).unwrap().parent;
+    drag(&mut h, "row:Alpha (1)", "row:Beta (1)", 0.0);
+    assert_eq!(parent(&h, alpha), Some(beta));
+    drag(&mut h, "row:Beta (2)", "row:Alpha (1)", 0.0);
+    assert_eq!(parent(&h, beta), None, "a group does not go into its own group");
+    drag(&mut h, "row:Gamma (1)", "row:Beta (2)", -10.0);
+    assert_eq!(h.app.session.doc.ordered_entries(0, "bodies", None), [BrowserEntry::Group(gamma), BrowserEntry::Group(beta)]);
 }

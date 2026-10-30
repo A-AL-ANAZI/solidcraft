@@ -239,7 +239,7 @@ fn copied_sketch_survives_source_close_and_pastes_from_a_sketch_group_menu() {
     run_item(&mut h.app, &item, egui::Pos2::ZERO);
     let id = h.app.session.doc.find_feature("Sketch1").unwrap().id;
     assert_eq!(h.app.session.doc.sketch(id).unwrap().curves.len(), 4);
-    assert!(h.app.session.doc.browser_groups.iter().any(|g| g.id == group && g.items.contains(&id.to_string())));
+    assert!(h.app.session.doc.browser_groups.iter().any(|g| g.id == group && g.has_item(&id.to_string())));
     // A later copy in this design replaces the cross-design snapshot everywhere.
     select(&mut h.app, json!({"type":"feature","id":id}));
     assert!(super::copy(&mut h.app));
@@ -795,9 +795,7 @@ fn pasting_on_a_group_puts_the_copy_in_it() {
         assert!(item.enabled);
         run_item(app, &item, egui::Pos2::ZERO);
     };
-    let holds = |app: &crate::SolveApp, group: u64, key: &str| {
-        app.session.doc.browser_groups.iter().any(|g| g.id == group && g.items.iter().any(|k| k == key))
-    };
+    let holds = |app: &crate::SolveApp, group: u64, key: &str| app.session.doc.browser_groups.iter().any(|g| g.id == group && g.has_item(key));
     select(&mut app, json!({"type": "body", "name": "Cube"}));
     assert!(super::copy(&mut app));
     paste_on(&mut app, bodies);
