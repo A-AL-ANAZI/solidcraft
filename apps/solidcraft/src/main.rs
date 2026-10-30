@@ -1145,12 +1145,13 @@ fn main() -> eframe::Result {
 }
 
 /// egui-wgpu is about to start a step of getting the graphics device and the window's surface up:
-/// the crash journal keeps it, and the adapter once it is picked.
+/// the crash journal keeps it until the app runs (a window opened later goes through the same
+/// steps), and the adapter once it is picked.
 fn startup_step(step: &'static str, detail: &str) {
     if step == eframe::egui_wgpu::STEP_ADAPTER_CHOSEN {
         solidcraft_engine::crash::set_environment(&format!("Renderer: {detail}"));
     }
-    solidcraft_engine::crash::phase(step);
+    solidcraft_engine::crash::startup_step(step);
 }
 
 /// The renderer settings: with `cpu`, the software adapter (WARP, lavapipe, llvmpipe). The
