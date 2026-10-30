@@ -2002,6 +2002,8 @@
   "prefs.sketch_exit_view.previous": "返回之前的视图",
   "prefs.sketch_exit_view.unless_rotated": "未旋转时返回",
   "prefs.sketch_exit_view_note": "“完成草图”、取消或连按两次 Esc 后视图的去向。",
+  "prefs.sketch_open_look_at": "打开草图时转向正对草图",
+  "prefs.sketch_open_look_at_note": "关闭：创建或编辑草图时视图保持不变。需要时用“朝向”正对草图。",
   "prefs.sketch_recent_snap": "自动吸附到最近的圆心和中点",
   "prefs.sketch_recent_snap_note": "绘图时，将光标吸附到最近两个圆心或直线边中点的辅助线相交处。关闭：辅助线仅作显示，光标不会移动。",
   "prefs.sketch_selection": "草图与选择",

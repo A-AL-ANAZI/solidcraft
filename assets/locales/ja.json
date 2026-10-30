@@ -2002,6 +2002,8 @@
   "prefs.sketch_exit_view.previous": "前のビューに戻る",
   "prefs.sketch_exit_view.unless_rotated": "回転していなければ戻る",
   "prefs.sketch_exit_view_note": "「スケッチを終了」、キャンセル、Esc の 2 回押しの後にビューが移る先です。",
+  "prefs.sketch_open_look_at": "スケッチを開いたときに正対させる",
+  "prefs.sketch_open_look_at_note": "オフ: スケッチの作成や編集でビューを動かしません。必要なときは「正面視」でスケッチに正対します。",
   "prefs.sketch_recent_snap": "最近使った中心と中点へ自動スナップ",
   "prefs.sketch_recent_snap_note": "作図中、直前の2つの円の中心または直線辺の中点のガイドが交わる位置にカーソルをスナップします。オフ: ガイドは表示のみで、カーソルは移動しません。",
   "prefs.sketch_selection": "スケッチと選択",

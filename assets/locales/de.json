@@ -1902,6 +1902,8 @@
   "prefs.sketch_conflict_colour": "Widersprüchliche Geometrie in der Konfliktfarbe",
   "prefs.sketch_conflict_colour_note": "Solange die Bedingungen einer Skizze im Konflikt stehen, werden auch die Kurven und Punkte, die eine nicht erfüllte Bedingung hält, in der Konfliktfarbe gezeichnet, nicht nur ihr Symbol oder ihre Bemaßung. Aus: Sie behalten ihre üblichen Farben.",
   "prefs.sketch_construction_lines": "Erweiterte Konstruktionslinien-Werkzeuge",
+  "prefs.sketch_open_look_at": "Beim Öffnen einer Skizze auf sie ausrichten",
+  "prefs.sketch_open_look_at_note": "Aus: Beim Erstellen oder Bearbeiten einer Skizze bleibt die Ansicht, wie sie ist. „Ansehen“ richtet die Ansicht bei Bedarf auf die Skizze aus.",
   "prefs.sketch_recent_snap": "Automatisch an zuletzt verwendete Mittelpunkte fangen",
   "prefs.sketch_recent_snap_note": "Fängt den Zeiger beim Zeichnen dort ein, wo sich die Hilfslinien der beiden zuletzt verwendeten Kreismittelpunkte oder Kantenmitten kreuzen. Aus: die Hilfslinien bleiben sichtbar und der Zeiger bewegt sich nicht.",
   "prefs.sketch_state_icons": "Skizzensymbole in der Farbe ihres Zustands",

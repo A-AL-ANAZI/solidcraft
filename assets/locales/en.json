@@ -2002,6 +2002,8 @@
   "prefs.sketch_exit_view.previous": "Return to the previous view",
   "prefs.sketch_exit_view.unless_rotated": "Return unless rotated",
   "prefs.sketch_exit_view_note": "Where the view goes after Finish Sketch, Cancel or a double Esc.",
+  "prefs.sketch_open_look_at": "Turn to face a sketch when it opens",
+  "prefs.sketch_open_look_at_note": "Off: creating or editing a sketch leaves the view as it is. Look At faces the sketch when you want it.",
   "prefs.sketch_recent_snap": "Auto snap to recent centers and midpoints",
   "prefs.sketch_recent_snap_note": "While drawing, snap the cursor where the guides of the two most recent circle centers or straight-edge midpoints cross. Off: those guides stay visual and the cursor does not move.",
   "prefs.sketch_selection": "Sketch & selection",

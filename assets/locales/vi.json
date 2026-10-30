@@ -2002,6 +2002,8 @@
   "prefs.sketch_exit_view.previous": "Trở về góc nhìn trước đó",
   "prefs.sketch_exit_view.unless_rotated": "Trở về góc nhìn trước trừ khi đã xoay",
   "prefs.sketch_exit_view_note": "Góc nhìn sẽ chuyển đến đâu sau khi bấm Hoàn tất phác thảo, Hủy bỏ hoặc bấm phím Esc hai lần.",
+  "prefs.sketch_open_look_at": "Xoay góc nhìn trực diện phác thảo khi mở",
+  "prefs.sketch_open_look_at_note": "Tắt: tạo hoặc chỉnh sửa phác thảo sẽ giữ nguyên góc nhìn. Dùng Nhìn trực diện để nhìn thẳng vào phác thảo khi cần.",
   "prefs.sketch_recent_snap": "Tự động bắt điểm vào tâm và trung điểm gần đây",
   "prefs.sketch_recent_snap_note": "Khi vẽ, con trỏ được bắt vào nơi các đường dẫn của hai tâm đường tròn hoặc trung điểm cạnh thẳng gần nhất cắt nhau. Tắt: các đường dẫn chỉ để xem và con trỏ không di chuyển.",
   "prefs.sketch_selection": "Phác thảo & chọn đối tượng",
