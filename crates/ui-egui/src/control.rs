@@ -32,7 +32,7 @@
 //! - `ui.window {action: minimize|maximize|restore|toggle|close}`: what the title bar's buttons do
 //! - `ui.confirm {accept?}`: the Delete confirmation (without `accept`: what it lists)
 //! - `ui.shortcut {command, key?, slot?, replace?}`: a command's keys, or bind one ("" clears)
-//! - `ui.help {item?: about|shortcuts|report}`: the Help menu; returns the version and diagnostics
+//! - `ui.help {item?: about|updates|shortcuts|report}`: the Help menu; returns the version and diagnostics
 //! - `ui.prefs {...}`: the preferences (default_units, nav, zoom_reverse, orbit_around, msaa,
 //!   length_decimals, angle_decimals); returns them all
 //! - `ui.capture {action?: capture|revert|cancel}`: the Capture Position question
@@ -1131,7 +1131,7 @@ fn dispatch(app: &mut SolveApp, ctx: &egui::Context, method: &str, p: &Value) ->
         "ui.prefs" => wrap(crate::prefs::control(app, p)),
         "ui.agent_chat" => wrap(crate::agent_chat::control(app, ctx, p)),
         "ui.help" => match s("item") {
-            Some(i @ ("about" | "shortcuts" | "report" | "crashes")) => {
+            Some(i @ ("about" | "updates" | "shortcuts" | "report" | "crashes")) => {
                 crate::help::run(app, ctx, i);
                 ok(
                     json!({"diagnostics": crate::help::diagnostics(app), "version": crate::help::VERSION, "commit": crate::help::COMMIT, "built": crate::help::BUILD_DATE}),

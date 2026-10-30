@@ -3334,11 +3334,12 @@ mod header_report_tests {
         FileAction::Quit.run(&mut h.app);
         assert!(h.app.docs.quitting.is_none() && h.app.docs.closing.is_none());
         // Help's windows wait too; Report an Issue… shows the report.
-        for item in ["about", "shortcuts", "messages", "crashes", "connect"] {
+        for item in ["about", "shortcuts", "messages", "crashes", "connect", "updates"] {
             assert!(!crate::help::available(&h.app, item), "{item}");
             crate::help::run(&mut h.app, &h.ctx, item);
         }
         assert!(!h.app.help.about && !h.app.keymap.open && !h.app.messages.open && h.app.help.connect.is_none());
+        assert!(!h.app.updater.open);
         assert!(crate::help::available(&h.app, "report") && crate::help::available(&h.app, "docs"));
         h.app.issue_report.draft = None;
         assert!(FileAction::Undo.enabled(&h.app) && FileAction::Settings.enabled(&h.app) && FileAction::Quit.enabled(&h.app));
