@@ -1586,6 +1586,13 @@ impl Dialog {
         true
     }
 
+    /// Give the keyboard to the form's value field `id`, its text selected, once the pointer is
+    /// idle: where a pick gives it when values have no boxes in the view (#9479).
+    pub(crate) fn give_keyboard(&mut self, id: egui::Id) {
+        self.value_focus = Some(id);
+        self.restore_value_focus = true;
+    }
+
     /// A pick in the viewport (already accepted by the active input).
     pub fn pick(&mut self, s: &Session, sel: Sel) {
         if self.take_extrude_target(s, &sel) {
@@ -3287,6 +3294,12 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
     }
     if let Some(field) = crate::ui_kit::canvas_value_focus(ctx) {
         value_fields.push(field);
+    }
+    // Without value boxes in the view (#9479), the keyboard the window's opening or a pick gives
+    // the box goes to the form's value field, once the form has drawn one.
+    if d.focus && !crate::canvas::boxes_shown(ctx) && !value_fields.is_empty() {
+        d.focus = false;
+        d.restore_value_focus = true;
     }
     // The editor loses the keyboard while the click is still being handled, possibly in a later
     // pass of the same frame, so give it back once the pointer is idle again.

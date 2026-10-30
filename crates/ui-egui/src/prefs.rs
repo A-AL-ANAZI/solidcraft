@@ -1014,6 +1014,10 @@ preference_settings! {
     /// Up/Down and the wheel over a focused value field step its plain number (`value_step`,
     /// #2320). Off by default: the keys move the text cursor and the wheel scrolls, as before.
     step_values: bool = false, PAGE_DESIGN => check_id("ui.step_values");
+    /// A command's value (Extrude's Distance, Fillet's Radius…) in a box beside its handle in the
+    /// view (`canvas::boxes_shown`). Off: it is typed in the command window only, which takes the
+    /// keyboard after a pick instead, and nothing covers the model (#9479).
+    value_boxes_in_view: bool = true, PAGE_DESIGN => check_id("prefs.value_boxes_in_view");
     /// A design coming back to its tab reads again the linked designs whose files changed since
     /// it last read them. Off: they wait for Update Links, as before.
     update_changed_links: bool = true, PAGE_DESIGN => check_id("settings.update_changed_links");
