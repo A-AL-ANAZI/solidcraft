@@ -3644,6 +3644,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Draai de dop tegen de klok in, houd vast en laat dan los.",
   "ui.3d_mouse_switch_cap": "Kalibreren als Return to Center",
   "ui.3d_mouse_switch_trackball": "Kalibreren als trackball",
+  "ui.3d_mouse_use_direct": "Direct stuurprogramma gebruiken",
+  "ui.3d_mouse_use_direct_tip": "De 3D-muis direct uitlezen (hidraw) in plaats van via spacenavd.",
   "ui.3d_mouse_view_axis": "Weergave-as",
   "ui.3d_mouse_view_off": "Uit",
   "ui.3d_mouse_view_off_tip": "Het profiel van het 3D-muisstuurprogramma schakelt deze as uit, dus de beweging ervan verplaatst de weergave niet. Kies je hier de beweging van een andere as, dan wisselen de twee van plaats en verplaatst die beweging de weergave niet meer.",

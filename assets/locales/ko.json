@@ -2811,6 +2811,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "캡을 시계 반대 방향으로 돌려 유지한 다음 놓으세요.",
   "ui.3d_mouse_switch_cap": "중앙 복귀형으로 보정",
   "ui.3d_mouse_switch_trackball": "트랙볼로 보정",
+  "ui.3d_mouse_use_direct": "직접 드라이버 사용",
+  "ui.3d_mouse_use_direct_tip": "spacenavd를 거치지 않고 3D 마우스를 직접(hidraw) 읽습니다.",
   "ui.3d_mouse_view_axis": "뷰 축",
   "ui.3d_mouse_view_off": "끔",
   "ui.3d_mouse_view_off_tip": "3D 마우스 드라이버 프로필이 이 축을 끄므로, 이 축의 동작으로는 뷰가 움직이지 않습니다. 여기서 다른 축의 동작을 고르면 둘이 바뀌고, 그 동작은 더 이상 뷰를 움직이지 않습니다.",

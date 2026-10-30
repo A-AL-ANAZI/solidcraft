@@ -3640,6 +3640,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Tournez le capuchon dans le sens antihoraire, maintenez, puis relâchez.",
   "ui.3d_mouse_switch_cap": "Calibrer comme retour au centre",
   "ui.3d_mouse_switch_trackball": "Calibrer comme un trackball",
+  "ui.3d_mouse_use_direct": "Utiliser le pilote direct",
+  "ui.3d_mouse_use_direct_tip": "Lire la souris 3D directement (hidraw) au lieu de passer par spacenavd.",
   "ui.3d_mouse_view_axis": "Axe de la vue",
   "ui.3d_mouse_view_off": "Désactivé",
   "ui.3d_mouse_view_off_tip": "Le profil du pilote de la souris 3D désactive cet axe : son mouvement ne déplace pas la vue. Choisir ici le mouvement d'un autre axe les échange, et ce mouvement cesse de déplacer la vue.",

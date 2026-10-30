@@ -3640,6 +3640,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Vri knotten mot klokken, hold den, og slipp.",
   "ui.3d_mouse_switch_cap": "Kalibrer som Tilbake til midten",
   "ui.3d_mouse_switch_trackball": "Kalibrer som trackball",
+  "ui.3d_mouse_use_direct": "Bruk direkte driver",
+  "ui.3d_mouse_use_direct_tip": "Les 3D-musen direkte (hidraw) i stedet for gjennom spacenavd.",
   "ui.3d_mouse_view_axis": "Visningsakse",
   "ui.3d_mouse_view_off": "Av",
   "ui.3d_mouse_view_off_tip": "Profilen til 3D-musdriveren slår av denne aksen, så bevegelsen flytter ikke visningen. Hvis du velger en annen akses bevegelse her, bytter de to plass, og den bevegelsen slutter å flytte visningen.",

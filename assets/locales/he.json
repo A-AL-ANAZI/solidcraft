@@ -3668,6 +3668,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "יש לסובב את הכיפה נגד כיוון השעון, להחזיק ואז לשחרר.",
   "ui.3d_mouse_switch_cap": "כיול כהתקן חזרה למרכז",
   "ui.3d_mouse_switch_trackball": "כיול ככדור עקיבה",
+  "ui.3d_mouse_use_direct": "שימוש במנהל ישיר",
+  "ui.3d_mouse_use_direct_tip": "קריאת העכבר התלת־ממדי ישירות (hidraw) במקום דרך spacenavd.",
   "ui.3d_mouse_view_axis": "ציר מבט",
   "ui.3d_mouse_view_off": "כבוי",
   "ui.3d_mouse_view_off_tip": "הפרופיל של מנהל ההתקן לעכבר התלת־ממדי מכבה את הציר הזה, ולכן התנועה שלו לא מזיזה את המבט. בחירה כאן בתנועה של ציר אחר מחליפה בין השניים, והתנועה ההיא מפסיקה להזיז את המבט.",

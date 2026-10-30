@@ -3668,6 +3668,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "キャップを反時計回りにひねって保持し、離してください。",
   "ui.3d_mouse_switch_cap": "センターに戻るタイプとしてキャリブレーション",
   "ui.3d_mouse_switch_trackball": "トラックボールとしてキャリブレーション",
+  "ui.3d_mouse_use_direct": "直接ドライバーを使用",
+  "ui.3d_mouse_use_direct_tip": "spacenavd を経由せず、3Dマウスを直接 (hidraw) 読み取ります。",
   "ui.3d_mouse_view_axis": "ビューの軸",
   "ui.3d_mouse_view_off": "オフ",
   "ui.3d_mouse_view_off_tip": "3D マウスのドライバーのプロファイルがこの軸をオフにしているため、この軸の動きではビューは動きません。ここで他の軸の動きを選ぶと 2 つが入れ替わり、その動きではビューが動かなくなります。",

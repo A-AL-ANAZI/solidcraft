@@ -3657,6 +3657,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Zakrenite kapicu suprotno od kazaljke na satu, držite je, a zatim pustite.",
   "ui.3d_mouse_switch_cap": "Kalibriši kao Povratak u centar",
   "ui.3d_mouse_switch_trackball": "Kalibriši kao trackball",
+  "ui.3d_mouse_use_direct": "Koristi direktni drajver",
+  "ui.3d_mouse_use_direct_tip": "Čitaj 3D miš direktno (hidraw) umjesto preko spacenavd.",
   "ui.3d_mouse_view_axis": "Osa prikaza",
   "ui.3d_mouse_view_off": "Isključeno",
   "ui.3d_mouse_view_off_tip": "Profil drajvera 3D miša isključuje ovu osu, pa njeno kretanje ne pomjera prikaz. Izbor kretanja druge ose ovdje ih zamjenjuje, a to kretanje prestaje pomjerati prikaz.",

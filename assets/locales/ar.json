@@ -3668,6 +3668,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "لُفّ الغطاء عكس عقارب الساعة، وأمسكه، ثم اتركه.",
   "ui.3d_mouse_switch_cap": "المعايرة كجهاز العودة إلى المركز",
   "ui.3d_mouse_switch_trackball": "المعايرة ككرة تتبّع",
+  "ui.3d_mouse_use_direct": "المشغل المباشر",
+  "ui.3d_mouse_use_direct_tip": "قراءة الفأرة ثلاثية الأبعاد مباشرة (hidraw) بدلًا من المرور عبر spacenavd.",
   "ui.3d_mouse_view_axis": "محور العرض",
   "ui.3d_mouse_view_off": "متوقف",
   "ui.3d_mouse_view_off_tip": "ملف تعريف مشغّل الفأرة ثلاثية الأبعاد يوقف هذا المحور، فلا تحرك حركتُه العرض. اختيار حركة محور آخر هنا يبادل بينهما، فتتوقف تلك الحركة عن تحريك العرض.",

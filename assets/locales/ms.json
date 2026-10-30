@@ -3640,6 +3640,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Pusing penutup lawan arah jam, tahan, kemudian lepaskan.",
   "ui.3d_mouse_switch_cap": "Tentukur sebagai kembali ke tengah",
   "ui.3d_mouse_switch_trackball": "Tentukur sebagai bola jejak",
+  "ui.3d_mouse_use_direct": "Guna pemacu terus",
+  "ui.3d_mouse_use_direct_tip": "Baca tetikus 3D secara terus (hidraw) dan bukan melalui spacenavd.",
   "ui.3d_mouse_view_axis": "Paksi paparan",
   "ui.3d_mouse_view_off": "Mati",
   "ui.3d_mouse_view_off_tip": "Profil pemacu tetikus 3D mematikan paksi ini, jadi gerakannya tidak menggerakkan paparan. Memilih gerakan paksi lain di sini menukar kedua-duanya, dan gerakan itu tidak lagi menggerakkan paparan.",

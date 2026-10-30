@@ -3668,6 +3668,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Xoay núm điều khiển ngược chiều kim đồng hồ, giữ nguyên, rồi thả ra.",
   "ui.3d_mouse_switch_cap": "Hiệu chuẩn theo kiểu trở về giữa",
   "ui.3d_mouse_switch_trackball": "Hiệu chuẩn như bi xoay",
+  "ui.3d_mouse_use_direct": "Dùng trình điều khiển trực tiếp",
+  "ui.3d_mouse_use_direct_tip": "Đọc chuột 3D trực tiếp (hidraw) thay vì qua spacenavd.",
   "ui.3d_mouse_view_axis": "Trục khung nhìn",
   "ui.3d_mouse_view_off": "Tắt",
   "ui.3d_mouse_view_off_tip": "Hồ sơ của trình điều khiển chuột 3D tắt trục này, nên chuyển động của nó không làm khung nhìn di chuyển. Chọn chuyển động của trục khác ở đây sẽ hoán đổi hai trục, và chuyển động đó không còn di chuyển khung nhìn.",

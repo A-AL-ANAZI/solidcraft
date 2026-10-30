@@ -3640,6 +3640,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Csavarja el a kupakot az óramutató járásával ellentétesen, tartsa, majd engedje el.",
   "ui.3d_mouse_switch_cap": "Kalibrálás középre visszatérőként",
   "ui.3d_mouse_switch_trackball": "Kalibrálás trackballként",
+  "ui.3d_mouse_use_direct": "Közvetlen illesztőprogram",
+  "ui.3d_mouse_use_direct_tip": "A 3D-egér közvetlen olvasása (hidraw) a spacenavd helyett.",
   "ui.3d_mouse_view_axis": "Nézettengely",
   "ui.3d_mouse_view_off": "Ki",
   "ui.3d_mouse_view_off_tip": "A 3D-egér illesztőprogramjának profilja kikapcsolja ezt a tengelyt, ezért a mozgása nem mozgatja a nézetet. Ha itt egy másik tengely mozgását választja, a kettő felcserélődik, és az a mozgás már nem mozgatja a nézetet.",

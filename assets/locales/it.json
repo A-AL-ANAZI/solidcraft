@@ -3640,6 +3640,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Ruota la manopola in senso antiorario, tienila, poi lasciala.",
   "ui.3d_mouse_switch_cap": "Calibra come ritorno al centro",
   "ui.3d_mouse_switch_trackball": "Calibra come trackball",
+  "ui.3d_mouse_use_direct": "Usa driver diretto",
+  "ui.3d_mouse_use_direct_tip": "Leggi il mouse 3D direttamente (hidraw) invece che tramite spacenavd.",
   "ui.3d_mouse_view_axis": "Asse della vista",
   "ui.3d_mouse_view_off": "Disattivato",
   "ui.3d_mouse_view_off_tip": "Il profilo del driver del mouse 3D disattiva questo asse, quindi il suo movimento non muove la vista. Se qui scegli il movimento di un altro asse, i due si scambiano e quel movimento smette di muovere la vista.",

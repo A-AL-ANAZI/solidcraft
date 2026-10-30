@@ -3640,6 +3640,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Răsuciți capacul în sens invers acelor de ceasornic, țineți-l, apoi eliberați-l.",
   "ui.3d_mouse_switch_cap": "Calibrează ca dispozitiv cu revenire la centru",
   "ui.3d_mouse_switch_trackball": "Calibrează ca trackball",
+  "ui.3d_mouse_use_direct": "Folosește driverul direct",
+  "ui.3d_mouse_use_direct_tip": "Citește mouse-ul 3D direct (hidraw) în loc de prin spacenavd.",
   "ui.3d_mouse_view_axis": "Axa vizualizării",
   "ui.3d_mouse_view_off": "Dezactivat",
   "ui.3d_mouse_view_off_tip": "Profilul driverului mouse-ului 3D dezactivează această axă, deci mișcarea ei nu mișcă vizualizarea. Alegerea aici a mișcării altei axe le interschimbă pe cele două, iar acea mișcare nu mai mișcă vizualizarea.",

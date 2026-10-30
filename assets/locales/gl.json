@@ -3640,6 +3640,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Xira o capuchón no sentido antihorario, mantén a posición e despois sóltao.",
   "ui.3d_mouse_switch_cap": "Calibrar como retorno ao centro",
   "ui.3d_mouse_switch_trackball": "Calibrar como trackball",
+  "ui.3d_mouse_use_direct": "Usar controlador directo",
+  "ui.3d_mouse_use_direct_tip": "Ler o rato 3D directamente (hidraw) en vez de a través de spacenavd.",
   "ui.3d_mouse_view_axis": "Eixe da vista",
   "ui.3d_mouse_view_off": "Desactivado",
   "ui.3d_mouse_view_off_tip": "O perfil do controlador do rato 3D desactiva este eixe, así que o seu movemento non move a vista. Se escolles aquí o movemento doutro eixe, intercámbianse e ese movemento deixa de mover a vista.",

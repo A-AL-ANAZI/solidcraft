@@ -3668,6 +3668,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "逆时针扭转摇杆帽，保持住，然后松开。",
   "ui.3d_mouse_switch_cap": "按回中类型校准",
   "ui.3d_mouse_switch_trackball": "按轨迹球校准",
+  "ui.3d_mouse_use_direct": "使用直接驱动",
+  "ui.3d_mouse_use_direct_tip": "直接读取 3D 鼠标（hidraw），不经过 spacenavd。",
   "ui.3d_mouse_view_axis": "视图轴",
   "ui.3d_mouse_view_off": "关闭",
   "ui.3d_mouse_view_off_tip": "3D 鼠标驱动程序的配置文件关闭了此轴，因此它的动作不会移动视图。在此选择另一个轴的动作会将两者互换，该动作将不再移动视图。",

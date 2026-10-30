@@ -2696,6 +2696,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Gira el capuchón en sentido antihorario, mantenlo y suéltalo.",
   "ui.3d_mouse_switch_cap": "Calibrar como retorno al centro",
   "ui.3d_mouse_switch_trackball": "Calibrar como trackball",
+  "ui.3d_mouse_use_direct": "Usar controlador directo",
+  "ui.3d_mouse_use_direct_tip": "Leer el ratón 3D directamente (hidraw) en lugar de a través de spacenavd.",
   "ui.3d_mouse_view_axis": "Eje de la vista",
   "ui.3d_mouse_view_off": "Desactivado",
   "ui.3d_mouse_view_off_tip": "El perfil del controlador del ratón 3D desactiva este eje, así que su movimiento no mueve la vista. Si eliges aquí el movimiento de otro eje, se intercambian y ese movimiento deja de mover la vista.",

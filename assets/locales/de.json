@@ -3062,6 +3062,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Kappe gegen den Uhrzeigersinn drehen, halten, dann loslassen.",
   "ui.3d_mouse_switch_cap": "Als Zurück zur Mitte kalibrieren",
   "ui.3d_mouse_switch_trackball": "Als Trackball kalibrieren",
+  "ui.3d_mouse_use_direct": "Direkten Treiber verwenden",
+  "ui.3d_mouse_use_direct_tip": "Die 3D-Maus direkt lesen (hidraw) statt über spacenavd.",
   "ui.3d_mouse_view_axis": "Ansichtsachse",
   "ui.3d_mouse_view_off": "Aus",
   "ui.3d_mouse_view_off_tip": "Das Profil des 3D-Maus-Treibers schaltet diese Achse ab, daher bewegt ihre Bewegung die Ansicht nicht. Wählen Sie hier die Bewegung einer anderen Achse, werden die beiden getauscht und sie bewegt die Ansicht nicht mehr.",

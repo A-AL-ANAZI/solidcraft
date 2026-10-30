@@ -3640,6 +3640,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Vrid knappen moturs, håll den och släpp sedan.",
   "ui.3d_mouse_switch_cap": "Kalibrera som återgång till centrum",
   "ui.3d_mouse_switch_trackball": "Kalibrera som styrkula",
+  "ui.3d_mouse_use_direct": "Använd direkt drivrutin",
+  "ui.3d_mouse_use_direct_tip": "Läs 3D-musen direkt (hidraw) i stället för via spacenavd.",
   "ui.3d_mouse_view_axis": "Vyaxel",
   "ui.3d_mouse_view_off": "Av",
   "ui.3d_mouse_view_off_tip": "3D-musdrivrutinens profil stänger av den här axeln, så dess rörelse flyttar inte vyn. Om du väljer en annan axels rörelse här byter de två plats, och den rörelsen slutar flytta vyn.",

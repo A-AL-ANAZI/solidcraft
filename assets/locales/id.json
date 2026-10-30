@@ -3640,6 +3640,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Putar cap berlawanan arah jarum jam, tahan, lalu lepaskan.",
   "ui.3d_mouse_switch_cap": "Kalibrasi sebagai Kembali ke Tengah",
   "ui.3d_mouse_switch_trackball": "Kalibrasi sebagai trackball",
+  "ui.3d_mouse_use_direct": "Gunakan driver langsung",
+  "ui.3d_mouse_use_direct_tip": "Baca mouse 3D secara langsung (hidraw), bukan melalui spacenavd.",
   "ui.3d_mouse_view_axis": "Sumbu tampilan",
   "ui.3d_mouse_view_off": "Mati",
   "ui.3d_mouse_view_off_tip": "Profil driver mouse 3D mematikan sumbu ini, sehingga gerakannya tidak menggerakkan tampilan. Memilih gerakan sumbu lain di sini akan menukar keduanya, dan gerakan itu berhenti menggerakkan tampilan.",

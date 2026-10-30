@@ -3640,6 +3640,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "逆時針扭轉搖桿帽，保持住，然後鬆開。",
   "ui.3d_mouse_switch_cap": "改以回中型校準",
   "ui.3d_mouse_switch_trackball": "改以軌跡球校準",
+  "ui.3d_mouse_use_direct": "使用直接驅動",
+  "ui.3d_mouse_use_direct_tip": "直接讀取 3D 滑鼠（hidraw），不經過 spacenavd。",
   "ui.3d_mouse_view_axis": "檢視軸",
   "ui.3d_mouse_view_off": "關閉",
   "ui.3d_mouse_view_off_tip": "3D 滑鼠驅動程式的設定檔關閉了此軸，因此它的動作不會移動檢視。在此選擇另一個軸的動作會將兩者互換，該動作將不再移動檢視。",

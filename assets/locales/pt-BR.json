@@ -1574,6 +1574,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Gire a tampa no sentido anti-horário, segure e solte.",
   "ui.3d_mouse_switch_cap": "Calibrar como retorno ao centro",
   "ui.3d_mouse_switch_trackball": "Calibrar como trackball",
+  "ui.3d_mouse_use_direct": "Usar driver direto",
+  "ui.3d_mouse_use_direct_tip": "Ler o mouse 3D diretamente (hidraw) em vez de pelo spacenavd.",
   "ui.3d_mouse_view_axis": "Eixo da vista",
   "ui.3d_mouse_view_off": "Desligado",
   "ui.3d_mouse_view_off_tip": "O perfil do driver do mouse 3D desliga este eixo, então o movimento dele não move a vista. Escolher aqui o movimento de outro eixo troca os dois, e esse movimento deixa de mover a vista.",

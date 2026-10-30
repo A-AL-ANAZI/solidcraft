@@ -1613,6 +1613,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Drej knoppen mod uret, hold den, og slip.",
   "ui.3d_mouse_switch_cap": "Kalibrer som vend tilbage til midten",
   "ui.3d_mouse_switch_trackball": "Kalibrér som trackball",
+  "ui.3d_mouse_use_direct": "Brug direkte driver",
+  "ui.3d_mouse_use_direct_tip": "Læs 3D-musen direkte (hidraw) i stedet for gennem spacenavd.",
   "ui.3d_mouse_view_axis": "Visningsakse",
   "ui.3d_mouse_view_off": "Fra",
   "ui.3d_mouse_view_off_tip": "3D-musedriverens profil slår denne akse fra, så dens bevægelse flytter ikke visningen. Vælger du en anden akses bevægelse her, bytter de to plads, og den bevægelse flytter ikke længere visningen.",

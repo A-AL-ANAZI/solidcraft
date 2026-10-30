@@ -1455,6 +1455,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Obróć nakładkę przeciwnie do ruchu wskazówek zegara, przytrzymaj, a następnie puść.",
   "ui.3d_mouse_switch_cap": "Kalibruj jako powrót do środka",
   "ui.3d_mouse_switch_trackball": "Kalibruj jako trackball",
+  "ui.3d_mouse_use_direct": "Użyj sterownika bezpośredniego",
+  "ui.3d_mouse_use_direct_tip": "Odczytuj mysz 3D bezpośrednio (hidraw) zamiast przez spacenavd.",
   "ui.3d_mouse_view_axis": "Oś widoku",
   "ui.3d_mouse_view_off": "Wyłączona",
   "ui.3d_mouse_view_off_tip": "Profil sterownika myszy 3D wyłącza tę oś, więc jej ruch nie porusza widokiem. Wybranie tu ruchu innej osi zamienia je miejscami, a ten ruch przestaje poruszać widokiem.",

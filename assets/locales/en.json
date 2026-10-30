@@ -3668,6 +3668,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Twist the cap anticlockwise, hold it, then let go.",
   "ui.3d_mouse_switch_cap": "Calibrate as Return to Center",
   "ui.3d_mouse_switch_trackball": "Calibrate as a trackball",
+  "ui.3d_mouse_use_direct": "Use Direct Driver",
+  "ui.3d_mouse_use_direct_tip": "Read the 3D mouse directly (hidraw) instead of through spacenavd.",
   "ui.3d_mouse_view_axis": "View axis",
   "ui.3d_mouse_view_off": "Off",
   "ui.3d_mouse_view_off_tip": "The 3D mouse driver's profile turns this axis off, so its motion doesn't move the view. Picking another axis's motion here swaps the two, and that motion stops moving the view.",

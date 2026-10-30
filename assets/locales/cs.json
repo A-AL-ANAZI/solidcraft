@@ -3640,6 +3640,8 @@
   "ui.3d_mouse_step_twist_counterclockwise": "Otočte hlavici proti směru hodinových ručiček, podržte a pusťte.",
   "ui.3d_mouse_switch_cap": "Kalibrovat jako návrat do středu",
   "ui.3d_mouse_switch_trackball": "Kalibrovat jako trackball",
+  "ui.3d_mouse_use_direct": "Použít přímý ovladač",
+  "ui.3d_mouse_use_direct_tip": "Číst 3D myš přímo (hidraw) místo přes spacenavd.",
   "ui.3d_mouse_view_axis": "Osa pohledu",
   "ui.3d_mouse_view_off": "Vypnuto",
   "ui.3d_mouse_view_off_tip": "Profil ovladače 3D myši tuto osu vypíná, takže její pohyb s pohledem nehýbe. Když tu vyberete pohyb jiné osy, prohodí se s ní a s pohledem přestane hýbat.",
