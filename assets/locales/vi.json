@@ -1840,6 +1840,8 @@
   "prefs.bottom_centre": "Giữa phía dưới",
   "prefs.bottom_right": "Góc dưới bên phải",
   "prefs.browser": "Cây thư mục",
+  "prefs.browser_eye_left": "Biểu tượng mắt cạnh mũi tên thu gọn",
+  "prefs.browser_eye_left_note": "Các hàng trong cây thư mục hiển thị biểu tượng mắt bật/tắt cạnh mũi tên thu gọn như trước đây, thay vì trong một cột ở đầu bên phải của các hàng.",
   "prefs.browser_reveal_on_hover": "Hiện khi di chuột",
   "prefs.browser_show_note": "Hiển thị giữ trình duyệt trên màn hình. Hiện khi di chuột ẩn nó cho đến khi con trỏ đến vị trí của nó hoặc thẻ mảnh ở cạnh trái, và nó vẫn mở khi con trỏ ở bên trong hoặc một menu của nó đang mở.",
   "prefs.browser_shown": "Hiển thị",

@@ -1787,6 +1787,8 @@
   "prefs.bottom_centre": "Unten mittig",
   "prefs.bottom_right": "Unten rechts",
   "prefs.browser": "Browser",
+  "prefs.browser_eye_left": "Auge neben dem Aufklapppfeil",
+  "prefs.browser_eye_left_note": "Browserzeilen zeigen ihr Auge zum Ein- und Ausblenden wie bisher neben dem Aufklapppfeil statt in einer Spalte am rechten Zeilenende.",
   "prefs.browser_reveal_on_hover": "Beim Überfahren einblenden",
   "prefs.browser_show_note": "Angezeigt lässt den Browser auf dem Bildschirm. Beim Überfahren einblenden blendet ihn aus, bis der Zeiger über seinen Platz oder die schmale Lasche an seinem linken Rand kommt; er bleibt offen, solange der Zeiger darin ist oder ein Menü daraus offen ist.",
   "prefs.browser_shown": "Angezeigt",

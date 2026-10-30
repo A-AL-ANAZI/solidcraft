@@ -1840,6 +1840,8 @@
   "prefs.bottom_centre": "Bottom center",
   "prefs.bottom_right": "Bottom right",
   "prefs.browser": "Browser",
+  "prefs.browser_eye_left": "Eye next to the fold arrow",
+  "prefs.browser_eye_left_note": "Browser rows show their show/hide eye next to the fold arrow, as before, instead of in a column at the right end of the rows.",
   "prefs.browser_reveal_on_hover": "Reveal on hover",
   "prefs.browser_show_note": "Shown keeps the browser on screen. Reveal on hover keeps it out of sight until the pointer comes over its place or the thin tab at its left edge, and it stays open while the pointer is inside it or a menu from it is open.",
   "prefs.browser_shown": "Shown",
