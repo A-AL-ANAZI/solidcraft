@@ -9,7 +9,7 @@ use std::cell::{Cell, RefCell};
 
 use egui::{Pos2, Stroke};
 use serde_json::{Value, json};
-use solidcraft_engine::geom::{Vec2, Vec3};
+use solidcraft_engine::geom::{Plane, Vec2, Vec3};
 
 use crate::SolveApp;
 use crate::tool_modifiers::{Audit, Binding, Match, ModAction, ModifierCombo, Scope, ToolModifiers, Trigger};
@@ -1515,11 +1515,35 @@ pub fn preview(app: &SolveApp, t: &Tool, painter: &egui::Painter, proj: &Proj) {
 /// Glyph size and spacing (screen pixels).
 const GLYPH: f32 = 15.0;
 
+/// Screen pixels per millimetre of the sketch plane below which constraint glyphs hide when the
+/// `hide_constraint_glyphs_zoomed_out` preference is on (#8980). About two pixels per millimetre:
+/// a 10 mm feature is then smaller than a glyph.
+pub const MIN_GLYPH_PX_PER_MM: f32 = 2.0;
+
+/// Whether constraint glyphs should draw at this sketch-plane scale (#8980).
+pub fn constraint_glyphs_visible_at_scale(px_per_mm: f32, hide_when_zoomed_out: bool) -> bool {
+    !hide_when_zoomed_out || px_per_mm >= MIN_GLYPH_PX_PER_MM
+}
+
+/// Pixels on screen for one millimetre along the sketch plane's U axis, near the plane origin.
+fn sketch_px_per_mm(plane: &Plane, proj: &Proj) -> Option<f32> {
+    let a = proj.to_screen(plane.to_world(Vec2::ZERO))?;
+    let b = proj.to_screen(plane.to_world(Vec2::new(1.0, 0.0)))?;
+    Some(a.distance(b))
+}
+
 fn glyphs(app: &SolveApp, painter: &egui::Painter, proj: &Proj, hover: Option<Pos2>) {
     let Some(sid) = active_sketch(app) else { return };
     let st = app.session.world_state();
     let Some(ss) = st.sketch(sid) else { return };
     if ss.sketch.view.hide_constraints {
+        GLYPHS.with(|g| g.borrow_mut().clear());
+        return;
+    }
+    // Zoomed out far enough: fixed-size glyphs would dominate the sketch (#8980).
+    if let Some(scale) = sketch_px_per_mm(&ss.plane, proj)
+        && !constraint_glyphs_visible_at_scale(scale, app.preferences.hide_constraint_glyphs_zoomed_out)
+    {
         GLYPHS.with(|g| g.borrow_mut().clear());
         return;
     }
@@ -1777,6 +1801,29 @@ pub fn show(app: &mut SolveApp, ui: &egui::Ui, painter: &egui::Painter, proj: &P
     marks(app, painter, proj);
     iso_lines(app, painter, proj);
     continuity_legend(app, painter, proj);
+}
+
+#[cfg(test)]
+mod glyph_zoom_tests {
+    use super::{MIN_GLYPH_PX_PER_MM, constraint_glyphs_visible_at_scale};
+
+    #[test]
+    fn glyphs_stay_visible_when_zoomed_in() {
+        assert!(constraint_glyphs_visible_at_scale(MIN_GLYPH_PX_PER_MM, true));
+        assert!(constraint_glyphs_visible_at_scale(10.0, true));
+    }
+
+    #[test]
+    fn glyphs_hide_below_the_zoom_threshold() {
+        assert!(!constraint_glyphs_visible_at_scale(MIN_GLYPH_PX_PER_MM - f32::EPSILON, true));
+        assert!(!constraint_glyphs_visible_at_scale(0.5, true));
+    }
+
+    #[test]
+    fn preference_off_keeps_glyphs_at_every_zoom() {
+        assert!(constraint_glyphs_visible_at_scale(0.1, false));
+        assert!(constraint_glyphs_visible_at_scale(MIN_GLYPH_PX_PER_MM - 1.0, false));
+    }
 }
 
 #[cfg(test)]

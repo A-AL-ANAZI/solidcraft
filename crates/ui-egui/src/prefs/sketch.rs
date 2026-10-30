@@ -76,6 +76,9 @@ pub(super) fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         // Conflicting curves and points in the conflict colour (#7244).
         let check = setting::sketch_conflict_colour(app, ui).on_hover_text(app.tr("prefs.sketch_conflict_colour_note"));
         crate::scenario::publish_target("prefs:sketch_conflict_colour", check.rect);
+        // Constraint glyphs hide when zoomed out (#8980).
+        let check = setting::hide_constraint_glyphs_zoomed_out(app, ui).on_hover_text(app.tr("prefs.hide_constraint_glyphs_zoomed_out_note"));
+        crate::scenario::publish_target("prefs:hide_constraint_glyphs_zoomed_out", check.rect);
     });
     ui_kit::settings_section(ui, "selection", app.tr("prefs.selecting"), |ui| {
         ui_kit::checkbox(ui, crate::i18n::tr_label("Click selects whole bodies"), &mut app.ui.pick_bodies);
