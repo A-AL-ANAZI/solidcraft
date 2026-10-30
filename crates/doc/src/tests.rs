@@ -715,3 +715,27 @@ fn timeline_group_legacy_json_omits_empty_joint_membership() {
     assert!(value["timeline_groups"][0].get("joints").is_none());
     assert_eq!(Document::from_json(&saved).unwrap().to_json(), saved);
 }
+
+/// A sketch whose touching curves are cut into more pieces than the profile search looks at
+/// says that some profiles may be missing, instead of leaving them out silently (#6896); an
+/// ordinary sketch says nothing.
+#[test]
+fn a_sketch_too_large_to_search_whole_says_profiles_may_be_missing() {
+    let mut doc = Document::new("large");
+    let mut sk = Sketch::new();
+    // Concentric ellipses 100 m across, each sampled into thousands of pieces, all one island.
+    let c = sk.add_point(Vec2::ZERO, None).unwrap();
+    for k in 0..5 {
+        let m = sk.add_point(Vec2::new(1e5 - k as f64 * 1e3, 0.0), None).unwrap();
+        sk.add_curve(solidcraft_sketch::CurveKind::Ellipse { c, m, r: 6e4 - k as f64 * 1e3 }, None).unwrap();
+    }
+    let large = doc.add_feature(FeatureKind::Sketch { plane: PlaneRef::Origin { name: "XY".into() }, sketch: sk }, None).unwrap();
+    let (plate, plate_sketch) = plate_doc();
+    let mut m = Model::new();
+    m.evaluate(&doc);
+    let warning = m.result(large).and_then(|r| r.warning.clone()).unwrap_or_default();
+    assert!(warning.contains("some profiles may be missing"), "{warning}");
+    let mut m = Model::new();
+    m.evaluate(&plate);
+    assert!(m.result(plate_sketch).and_then(|r| r.warning.as_deref()).is_none());
+}
