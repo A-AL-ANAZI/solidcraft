@@ -1979,7 +1979,7 @@
   "prefs.prefer_free_sketch_points": "تفضيل نقاط الرسم القابلة للتحريك عند تداخل النقاط",
   "prefs.preview_choices": "معاينة اختياراتك",
   "prefs.print_face_highlight": "إبراز وجه الطباعة",
-  "prefs.print_face_highlight_tip": "مدى قوة تلوين وجه الطباعة للجسم وتحديده في العرض. ‏0 % لا يُظهر أي إبراز.",
+  "prefs.print_face_highlight_tip": "مدى قوة تلوين وجه الطباعة للجسم ورسم حدوده في العرض. القيمة 0 % لا تُظهر أي إبراز.",
   "prefs.profile_active": "ملف التعريف النشط",
   "prefs.profile_applied": "تم تطبيق ملف التعريف.",
   "prefs.profile_changed": "تغيّرت الإعدادات منذ حفظ ملف التعريف. «حفظ» يحفظها فيه.",
