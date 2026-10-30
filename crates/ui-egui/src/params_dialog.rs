@@ -734,6 +734,8 @@ pub struct Suggestion {
 struct Cache {
     revision: u64,
     all: Arc<Vec<Suggestion>>,
+    /// How many parameters Down arrow lists (`Prefs::parameter_list_rows`).
+    every: usize,
 }
 
 fn cache_id() -> egui::Id {
@@ -744,7 +746,9 @@ fn cache_id() -> egui::Id {
 /// design where expression boxes can reach it. Called once per frame.
 pub fn publish(app: &mut SolveApp, ctx: &egui::Context) {
     let rev = app.session.revision;
-    if ctx.data(|d| d.get_temp::<Cache>(cache_id())).is_some_and(|c| c.revision == rev) {
+    let every =
+        usize::from(app.preferences.parameter_list_rows.clamp(*crate::prefs::PARAMETER_LIST_ROWS.start(), *crate::prefs::PARAMETER_LIST_ROWS.end()));
+    if ctx.data(|d| d.get_temp::<Cache>(cache_id())).is_some_and(|c| c.revision == rev && c.every == every) {
         return;
     }
     let mut all: Vec<Suggestion> = Vec::new();
@@ -763,7 +767,7 @@ pub fn publish(app: &mut SolveApp, ctx: &egui::Context) {
             }
         }
     }
-    ctx.data_mut(|d| d.insert_temp(cache_id(), Cache { revision: rev, all: Arc::new(all) }));
+    ctx.data_mut(|d| d.insert_temp(cache_id(), Cache { revision: rev, all: Arc::new(all), every }));
 }
 
 /// The identifier being typed before `cursor` (chars) and where it starts.
@@ -800,6 +804,14 @@ pub(crate) fn suggestions_for(ctx: &egui::Context, word: &str, explicit: bool) -
     // `cab_side_thickness`, #2757), after the names that start with it.
     let within = |s: &&Suggestion| !exact && s.kind == "parameter" && !starts(s) && s.text.to_ascii_lowercase().contains(&w);
     all.iter().filter(|s| starts(s) && offered(s)).chain(all.iter().filter(|s| within(s) && offered(s))).take(8).cloned().collect()
+}
+
+/// The named parameters, in the order the list offers them (favourites and the design's own
+/// first), up to the Preferences' cap rather than a typed word's eight: what Down arrow in an
+/// empty expression box shows (#9246).
+pub(crate) fn every_parameter(ctx: &egui::Context) -> Vec<Suggestion> {
+    let Some(cache) = ctx.data(|d| d.get_temp::<Cache>(cache_id())) else { return Vec::new() };
+    cache.all.iter().filter(|s| s.kind == "parameter").take(cache.every).cloned().collect()
 }
 
 /// Is `word` itself one of the known tokens (a parameter or dimension name, a constant or a

@@ -281,6 +281,8 @@ pub const PAGE_SKETCH: usize = 5;
 pub const PAGE_GRAPHICS: usize = 6;
 pub const PAGE_AI: usize = 7;
 pub const PAGE_PLUGINS: usize = 8;
+/// What Preferences accepts for `parameter_list_rows`: `parameters.complete` answers at most 200.
+pub const PARAMETER_LIST_ROWS: std::ops::RangeInclusive<u16> = 5..=200;
 const WINDOW_PAGES: &[ui_kit::WindowPage<SolveApp>] = &[
     ui_kit::WindowPage { icon: "settings", label: "ui.general", group: None, handle: "prefs:page:General", scroll: true, draw: window_page::<0> },
     ui_kit::WindowPage {
@@ -1006,6 +1008,9 @@ preference_settings! {
     /// Decimals shown for lengths and angles.
     length_decimals: u8 = 2, PAGE_DESIGN;
     angle_decimals: u8 = 1, PAGE_DESIGN;
+    /// The most parameters Down arrow lists in an empty expression box (#9246): fewer keeps the
+    /// list light in a large design.
+    parameter_list_rows: u16 = 50, PAGE_DESIGN;
     /// Up/Down and the wheel over a focused value field step its plain number (`value_step`,
     /// #2320). Off by default: the keys move the text cursor and the wheel scrolls, as before.
     step_values: bool = false, PAGE_DESIGN => check_id("ui.step_values");
