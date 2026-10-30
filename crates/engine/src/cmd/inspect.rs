@@ -240,7 +240,12 @@ fn sketch_json(s: &Session, id: u64) -> Option<Value> {
         .profiles
         .iter()
         .enumerate()
-        .map(|(i, p)| json!({"index": i, "area_mm2": p.area, "centroid_sketch": p.centroid, "curves": p.outer_curves, "holes": p.hole_curves}))
+        // A loop records one entry per piece it walks, and a conic or spline is walked as many
+        // short pieces: each loop names a curve once, in loop order.
+        .map(|(i, p)| {
+            let holes: Vec<Vec<String>> = p.hole_curves.iter().map(|h| solidcraft_sketch::distinct_curves(h)).collect();
+            json!({"index": i, "area_mm2": p.area, "centroid_sketch": p.centroid, "curves": solidcraft_sketch::distinct_curves(&p.outer_curves), "holes": holes})
+        })
         .collect();
     Some(json!({
         "id": id,
