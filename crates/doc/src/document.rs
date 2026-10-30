@@ -4022,7 +4022,7 @@ impl Document {
                 return Err(DocError::Invalid("a text's height must be positive".into()));
             }
             if let Some(e) = &exprs.text {
-                let words = self.eval_words(e).map_err(|error| DocError::Expr(format!("text: {error}")))?;
+                let words = self.eval_words(e, vals).map_err(|error| DocError::Expr(format!("text: {error}")))?;
                 if words.trim().is_empty() || words.chars().count() > solidcraft_sketch::MAX_TEXT_CHARS {
                     return Err(DocError::Invalid(format!("text: `{e}` gives no words, or too many")));
                 }
