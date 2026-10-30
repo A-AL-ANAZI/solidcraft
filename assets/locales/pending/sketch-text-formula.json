@@ -1,9 +1,0 @@
-{
-  "en": { "sketch_text.formula": "Start with = to build the words from parameters: ='W' + number(Width)" },
-  "ar": { "sketch_text.formula": "ابدأ بـ = لتكوين النص من المعاملات: ='W' + number(Width)" },
-  "fr": { "sketch_text.formula": "Commencez par = pour composer le texte avec des paramètres : ='L' + number(Largeur)" },
-  "he": { "sketch_text.formula": "התחילו ב־= כדי לבנות את הטקסט מפרמטרים: ='W' + number(Width)" },
-  "ja": { "sketch_text.formula": "= で始めるとパラメーターから文字列を組み立てられます: ='W' + number(Width)" },
-  "vi": { "sketch_text.formula": "Bắt đầu bằng = để tạo chữ từ các tham số: ='W' + number(Width)" },
-  "zh": { "sketch_text.formula": "以 = 开头即可用参数组成文字：='W' + number(Width)" }
-}
