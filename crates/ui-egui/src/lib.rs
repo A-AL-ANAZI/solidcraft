@@ -592,6 +592,8 @@ pub struct SolveApp {
     pub network_prompt: Option<network_prompt::NetworkPrompt>,
     /// Designs left by crashed apps, offered for recovery.
     pub recoverable: Vec<solidcraft_engine::recovery::Entry>,
+    /// Discard all was clicked in the recovery window: its confirmation is showing (#9299).
+    pub recovery_discard_all: bool,
     /// The bodies of a just-opened Y-up file, offered to be stood up (`stand_up`).
     pub stand_up: Option<Vec<String>>,
     /// The placement of the component that file came in as: the offer turns it.
@@ -780,6 +782,7 @@ impl SolveApp {
             disk_prompt: false,
             network_prompt: None,
             recoverable: Vec::new(),
+            recovery_discard_all: false,
             stand_up: None,
             stand_up_occurrence: None,
             stand_up_reason: false,

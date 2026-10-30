@@ -1,0 +1,56 @@
+{
+  "en": {
+    "recovery.discard_all": "Discard all",
+    "recovery.discard_all_detail": "This cannot be undone.",
+    "recovery.discard_all_title": "Discard {count} autosaves?",
+    "recovery.discard_all_title_one": "Discard 1 autosave?"
+  },
+  "ar": {
+    "recovery.discard_all": "تجاهل الكل",
+    "recovery.discard_all_detail": "لا يمكن التراجع عن هذا الإجراء.",
+    "recovery.discard_all_title": "تجاهل {count} من الحفظ التلقائي؟",
+    "recovery.discard_all_title_one": "تجاهل حفظ تلقائي واحد؟"
+  },
+  "de": {
+    "recovery.discard_all": "Alle verwerfen",
+    "recovery.discard_all_detail": "Dies kann nicht rückgängig gemacht werden.",
+    "recovery.discard_all_title": "{count} automatische Sicherungen verwerfen?",
+    "recovery.discard_all_title_one": "1 automatische Sicherung verwerfen?"
+  },
+  "fr": {
+    "recovery.discard_all": "Tout abandonner",
+    "recovery.discard_all_detail": "Cette action est irréversible.",
+    "recovery.discard_all_title": "Abandonner {count} sauvegardes automatiques ?",
+    "recovery.discard_all_title_one": "Abandonner 1 sauvegarde automatique ?"
+  },
+  "he": {
+    "recovery.discard_all": "השלכת הכול",
+    "recovery.discard_all_detail": "לא ניתן לבטל פעולה זו.",
+    "recovery.discard_all_title": "להשליך {count} שמירות אוטומטיות?",
+    "recovery.discard_all_title_one": "להשליך שמירה אוטומטית אחת?"
+  },
+  "ja": {
+    "recovery.discard_all": "すべて破棄",
+    "recovery.discard_all_detail": "この操作は元に戻せません。",
+    "recovery.discard_all_title": "{count} 件の自動保存を破棄しますか？",
+    "recovery.discard_all_title_one": "1 件の自動保存を破棄しますか？"
+  },
+  "ko": {
+    "recovery.discard_all": "모두 버리기",
+    "recovery.discard_all_detail": "이 작업은 되돌릴 수 없습니다.",
+    "recovery.discard_all_title": "자동 저장 {count}개를 버리시겠습니까?",
+    "recovery.discard_all_title_one": "자동 저장 1개를 버리시겠습니까?"
+  },
+  "vi": {
+    "recovery.discard_all": "Hủy bỏ tất cả",
+    "recovery.discard_all_detail": "Không thể hoàn tác thao tác này.",
+    "recovery.discard_all_title": "Hủy bỏ {count} bản tự động lưu?",
+    "recovery.discard_all_title_one": "Hủy bỏ 1 bản tự động lưu?"
+  },
+  "zh": {
+    "recovery.discard_all": "全部放弃",
+    "recovery.discard_all_detail": "此操作无法撤消。",
+    "recovery.discard_all_title": "放弃 {count} 个自动保存？",
+    "recovery.discard_all_title_one": "放弃 1 个自动保存？"
+  }
+}
