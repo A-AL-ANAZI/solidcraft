@@ -1520,6 +1520,54 @@ mod tests {
         std::fs::remove_file(path).unwrap();
     }
 
+    /// A design's saved model keeps each set of sketch keys once, not again with every state:
+    /// every state wrote the key of each sketch before it, so a design of many sketches and many
+    /// features after them (5,484 features) passed the cache's size limit and kept only some of
+    /// its states. A set is written as the changes from the one before it; the model opens from
+    /// the file with every state (the keys read back: `eval_cost_tests`).
+    #[test]
+    fn a_saved_model_keeps_each_set_of_sketch_keys_once() {
+        let mut s = Session::new(Document::new("Sketches"));
+        let run = |s: &mut Session, id: &str, p: Value| s.execute(id, &p).unwrap();
+        for i in 0..6 {
+            run(&mut s, "sketch.create", json!({"plane":"XY","name":format!("Pad{i}")}));
+            run(&mut s, "sketch.rectangle.two_point", json!({"p0":[20 * i,0],"p1":[20 * i + 10,10]}));
+            run(&mut s, "solid.extrude", json!({"distance":5,"operation":"new"}));
+        }
+        for i in 0..10 {
+            run(&mut s, "solid.box", json!({"length":5,"width":5,"height":5,"corner":[20 * i,40,0],"operation":"new"}));
+        }
+        let saved = saved_geometry(&s, &s.doc).unwrap();
+        let features = saved.records["features"].as_array().unwrap();
+        assert_eq!(features.len(), s.doc.features.len());
+        assert!(features.iter().all(|f| f.get("state").is_some()), "every state kept");
+        let states = saved.records["states"].as_array().unwrap();
+        let sets = saved.records["sketch_key_sets"].as_array().unwrap();
+        // One set per sketch: each later one adds that sketch's key to the one before it.
+        assert_eq!(sets.len(), 6, "{sets:?}");
+        assert_eq!(sets[0]["set"].as_array().unwrap().len(), 1);
+        for (i, set) in sets.iter().enumerate().skip(1) {
+            assert_eq!(
+                (set["base"].as_u64(), set["set"].as_array().unwrap().len(), set["drop"].as_array().unwrap().len()),
+                (Some(i as u64 - 1), 1, 0)
+            );
+        }
+        let last = sets.len() - 1;
+        assert_eq!(
+            states.iter().filter(|st| st["sketch_key_set"] == json!(last)).count(),
+            2 + 10,
+            "the last sketch, its extrude and every box share one set"
+        );
+        let path = std::env::temp_dir().join(format!("solidcraft-sketch-key-cache-{}.solidcraft", std::process::id()));
+        let bytes = solidcraft_io::write_design_container_with_cache(&s.doc, solidcraft_io::DesignCompression::Fast, None, Some(&saved)).unwrap();
+        std::fs::write(&path, bytes).unwrap();
+        let mut reopened = Session::default();
+        reopened.execute("doc.open", &json!({"path": path})).unwrap();
+        assert_eq!(reopened.model.last_recomputed, 0, "taken from the file, not evaluated");
+        assert!(reopened.model.results.iter().zip(&s.model.results).all(|(a, b)| a.ms == b.ms));
+        std::fs::remove_file(path).unwrap();
+    }
+
     #[test]
     #[ignore = "manual native cache save benchmark; generate issue303-step.json first"]
     fn benchmark_native_cache_save() {

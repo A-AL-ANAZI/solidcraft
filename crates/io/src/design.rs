@@ -1087,12 +1087,12 @@ mod tests {
             .collect();
         let state = json!({
             "bodies": [[0, bodies.len()]], "sketches": [], "body_counter": 7, "sheets": [], "construct": [], "threads": [],
-            "sketch_keys": [], "blend_edges": {}, "fitted": {}, "tapered": {},
+            "sketch_key_set": 0, "blend_edges": {}, "fitted": {}, "tapered": {},
         });
         solidcraft_doc::SavedModel {
             records: json!({
                 "features": [{"id": 1, "fingerprint": "0000000000000000", "ms": 0.0, "skipped": false, "state": 0}],
-                "states": [state], "model_bodies": records, "names": [{"faces": [], "info": []}], "sketches": [], "sheets": [],
+                "states": [state], "model_bodies": records, "names": [{"faces": [], "info": []}], "sketches": [], "sheets": [], "sketch_key_sets": [{"set": [], "drop": []}],
             }),
             bodies,
         }
@@ -1220,7 +1220,7 @@ mod tests {
                 let bodies = if i == 0 { json!([[0, 16]]) } else { json!([[0, 8], [8 * (i + 1), 8]]) };
                 json!({
                     "bodies": bodies, "sketches": [], "body_counter": 7, "sheets": [], "construct": [], "threads": [],
-                    "sketch_keys": [], "blend_edges": {}, "fitted": {}, "tapered": {},
+                    "sketch_key_set": 0, "blend_edges": {}, "fitted": {}, "tapered": {},
                 })
             })
             .collect();
@@ -1230,7 +1230,7 @@ mod tests {
             .map(|(i, ms)| json!({"id": i + 1, "fingerprint": "0000000000000000", "ms": ms, "skipped": false, "state": i}))
             .collect();
         solidcraft_doc::SavedModel {
-            records: json!({"features": features, "states": states, "model_bodies": records, "names": [{"faces": [], "info": []}], "sketches": [], "sheets": []}),
+            records: json!({"features": features, "states": states, "model_bodies": records, "names": [{"faces": [], "info": []}], "sketches": [], "sheets": [], "sketch_key_sets": [{"set": [], "drop": []}]}),
             bodies,
         }
     }
@@ -1280,7 +1280,7 @@ mod tests {
                 one.records["states"],
                 json!([{
                     "bodies": [[0, 16]], "sketches": [], "body_counter": 7, "sheets": [], "construct": [], "threads": [],
-                    "sketch_keys": [], "blend_edges": {}, "fitted": {}, "tapered": {},
+                    "sketch_key_set": 0, "blend_edges": {}, "fitted": {}, "tapered": {},
                 }])
             );
         }
@@ -1354,6 +1354,24 @@ mod tests {
             let bytes = package(&entries);
             assert!(read_design_geometry(&bytes).is_none());
             assert!(read_design_preview(&bytes).is_none());
+            assert_eq!(crate::read_design(&bytes).unwrap().to_json(), doc.to_json());
+        }
+        // A cache of the format before sketch-key sets (/4) is a miss, and so are records of
+        // that shape (each state's keys inline) under the current format: never misread.
+        let manifest: Value = serde_json::from_slice(&original["cache/model.json"]).unwrap();
+        let mut older = manifest.clone();
+        older["format"] = json!("solidcraft-model-cache/4");
+        let mut inline = manifest.clone();
+        let model = inline["model"].as_object_mut().unwrap();
+        model.remove("sketch_key_sets");
+        let state = model["states"][0].as_object_mut().unwrap();
+        state.remove("sketch_key_set");
+        state.insert("sketch_keys".into(), json!([]));
+        for manifest in [older, inline] {
+            let mut entries = original.clone();
+            entries.insert("cache/model.json".into(), serde_json::to_vec(&manifest).unwrap());
+            let bytes = package(&entries);
+            assert!(read_design_geometry(&bytes).is_none(), "{}", manifest["format"]);
             assert_eq!(crate::read_design(&bytes).unwrap().to_json(), doc.to_json());
         }
         let mut entries = original;
