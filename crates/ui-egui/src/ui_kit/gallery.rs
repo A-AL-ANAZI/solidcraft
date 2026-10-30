@@ -1334,6 +1334,13 @@ const ELEMENTS: &[Element] = &[
             dropdown(ui, "gallery", &mut s.selected, &["One", "Two"]);
         });
     }),
+    element!("dropdown_previews", "dialog:row:Gallery", Some("dialog:Gallery"), |ui, s| {
+        row(ui, "Gallery", |ui| {
+            dropdown_previews(ui, "gallery_previews", &mut s.selected, &["One", "Two"], |ui, index| {
+                ui.label(if index == 0 { "One" } else { "Two" });
+            });
+        });
+    }),
     element!("dropdown_picked", "dialog:row:Gallery", Some("dialog:Gallery"), |ui, s| {
         row(ui, "Gallery", |ui| {
             dropdown_picked(ui, "gallery_picked", &mut s.selected, &["One", "Two"]);

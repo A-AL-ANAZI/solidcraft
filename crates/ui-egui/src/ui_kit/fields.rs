@@ -305,6 +305,24 @@ pub(crate) fn dropdown(ui: &mut Ui, id: &str, selected: &mut usize, options: &[&
     })
 }
 
+/// [`dropdown`] whose options each show a picture beside them while hovered, painted by `preview`
+/// for that option's index, so a choice can be seen before it is picked. Tokens: dropdown tokens,
+/// the tooltip frame.
+pub(crate) fn dropdown_previews(ui: &mut Ui, id: &str, selected: &mut usize, options: &[&str], preview: impl Fn(&mut Ui, usize)) -> Response {
+    let text = options.get(*selected).copied().map(crate::i18n::tr_label).unwrap_or("");
+    let row = label(ui).to_string();
+    dropdown_menu(ui, id, text, |ui| {
+        for (index, option) in options.iter().enumerate() {
+            let response = ui.selectable_value(selected, index, crate::i18n::tr_label(option));
+            scenario::publish_target(&format!("dialog:{row}:{option}"), response.rect);
+            Container::tooltip_ui(&response, |ui| {
+                preview(ui, index);
+                scenario::publish_rect(&format!("dialog:preview:{row}:{option}"), ui.min_rect());
+            });
+        }
+    })
+}
+
 /// [`dropdown`] that also says whether an option was clicked, the one already shown included (a
 /// pick of the shown option changes nothing, yet it is a choice).
 pub(crate) fn dropdown_picked(ui: &mut Ui, id: &str, selected: &mut usize, options: &[&str]) -> bool {
