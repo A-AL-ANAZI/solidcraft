@@ -1246,6 +1246,7 @@ fn model_feature_indices(app: &SolveApp, component: u64, sketches: bool) -> Vec<
             .doc
             .features
             .iter()
+            .take(app.session.doc.marker.unwrap_or(app.session.doc.features.len()))
             .enumerate()
             .filter_map(|(i, f)| {
                 let kind = if sketches {
@@ -2260,7 +2261,7 @@ impl Entry {
             label: b.name.clone(),
             icon,
             tip: Some(tip),
-            visible: !app.session.visibility.hidden_bodies.contains(&world),
+            visible: app.body_visible(&world),
             selected: app.session.selection.iter().any(|s| matches!(s, Sel::Body { name } if name == &world)),
             color: None,
             sketch_state: None,
