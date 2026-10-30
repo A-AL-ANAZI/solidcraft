@@ -4536,6 +4536,11 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
                 .collect();
             let _ = app.run("select.set", json!({ "items": items, "add": add }));
         }
+        // Double-click a curve while a Mirror/Move/Copy/Scale/pattern Entities input is open:
+        // add the whole connected chain to that input (#8390).
+        if resp.double_clicked() && !held && !dim_edit && app.tool.is_none() && app.dialog.is_some() {
+            let _ = crate::sketch_modify_ui::double_click_entities(app);
+        }
         // Double-click an edge: select the edges that continue it smoothly (the loop).
         if resp.double_clicked()
             && !held
