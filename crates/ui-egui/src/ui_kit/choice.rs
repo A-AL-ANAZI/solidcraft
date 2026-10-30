@@ -33,6 +33,7 @@ pub(crate) struct Segments<'a> {
 }
 
 pub(crate) fn segmented(ui: &mut Ui, selected: &mut usize, options: &[&str], config: Segments<'_>) -> bool {
+    crate::prefs_search::note_unlabelled(ui, options);
     if crate::prefs_search::suppress_chrome(ui) && !crate::prefs_search::texts_hit(ui, options) {
         return false;
     }
