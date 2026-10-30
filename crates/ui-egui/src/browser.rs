@@ -511,9 +511,18 @@ fn compact_tree(ui: &egui::Ui) -> bool {
     ui.ctx().data(|d| d.get_temp::<bool>(egui::Id::new("sc_compact_tree"))).unwrap_or(false)
 }
 
+/// Where tree rows put their eye this frame (Preferences › Interface, #8718).
+pub(crate) fn publish_row_prefs(app: &SolveApp, ctx: &egui::Context) {
+    ctx.data_mut(|d| d.insert_temp(egui::Id::new("sc_tree_eye_left"), app.preferences.browser_eye_left));
+}
+
+fn eye_left(ui: &egui::Ui) -> bool {
+    ui.ctx().data(|d| d.get_temp::<bool>(egui::Id::new("sc_tree_eye_left"))).unwrap_or(false)
+}
+
 pub(crate) fn draw_row(ui: &mut egui::Ui, id: egui::Id, row: &Row<'_>) -> RowResp {
     let compact = compact_tree(ui);
-    let out = crate::ui_kit::tree_row(ui, id, &Row { compact, ..*row });
+    let out = crate::ui_kit::tree_row(ui, id, &Row { compact, eye_left: eye_left(ui), ..*row });
     if let Some(r) = out.rect.filter(|r| ui.is_rect_visible(*r)) {
         let x = r.left() + if compact { Tokens::get().space_8 } else { 2.0 } + row.depth as f32 * INDENT;
         let fold = row.fold.map(|_| Rect::from_min_max(pos2(x - 4.0, r.top()), pos2(x + 15.0, r.bottom())));
@@ -1583,10 +1592,13 @@ fn occurrence_rows_inner(
     );
     if let Some(rect) = r.rect.filter(|_| r.resp.is_some()) {
         OCCURRENCES.with(|d| d.borrow_mut().push((path.to_vec(), placement.name.clone(), rect, open)));
-        crate::scenario::publish_handle(&format!("row:occurrence:{}", key.trim_start_matches("o:")), pos2(rect.right() - 12.0, rect.center().y));
-        let x = rect.left() + 2.0 + depth as f32 * INDENT;
-        for (control, offset) in [("fold", 6.0), ("eye", 22.0), ("activate", 38.0)] {
-            crate::scenario::publish_handle(&format!("{control}:occurrence:{}", key.trim_start_matches("o:")), pos2(x + offset, rect.center().y));
+        // Near the row's end, clear of an eye there.
+        let end = r.eye_at.filter(|e| e.x > rect.center().x).map_or(rect.right() - 12.0, |e| e.x - 24.0);
+        crate::scenario::publish_handle(&format!("row:occurrence:{}", key.trim_start_matches("o:")), pos2(end, rect.center().y));
+        for (control, at) in [("fold", r.fold_at), ("eye", r.eye_at), ("activate", r.radio_at)] {
+            if let Some(at) = at {
+                crate::scenario::publish_handle(&format!("{control}:occurrence:{}", key.trim_start_matches("o:")), at);
+            }
         }
     }
     if let Some(resp) = &r.resp {
@@ -2582,15 +2594,13 @@ fn folder_rows_at(
 
 /// The body's name edited in its row (started by a double-click): Enter or leaving the box keeps
 /// the name, Escape cancels.
-fn inline_rename(app: &mut SolveApp, ui: &mut egui::Ui, row: Rect, e: &Entry, depth: usize) {
+fn inline_rename(app: &mut SolveApp, ui: &mut egui::Ui, row: Rect, label_left: f32, e: &Entry) {
     let editing = app.menu.rename.as_ref().is_some_and(|r| r.inline && matches!(&r.what, crate::context_menu::RenameWhat::Body(b) if *b == e.key));
     if !editing {
         return;
     }
     let Some(mut rename) = app.menu.rename.take() else { return };
-    // Where the label starts: the fold arrow, eye and icon come first.
-    let left = row.left() + 2.0 + depth as f32 * INDENT + 14.0 + 18.0 + 21.0;
-    let edit_rect = Rect::from_min_max(pos2(left, row.top() + 1.0), pos2(row.right() - 3.0, row.bottom() - 1.0));
+    let edit_rect = Rect::from_min_max(pos2(label_left, row.top() + 1.0), pos2(row.right() - 3.0, row.bottom() - 1.0));
     ui.painter().rect_filled(edit_rect, 3.0, Tokens::get().field);
     let id = ui.id().with(("browser_rename", &e.row_key));
     let response = crate::ui_kit::inline_name(ui, edit_rect, id, &mut rename.text);
@@ -2730,9 +2740,9 @@ fn entry_row(
         }
     }
     if folder == "bodies"
-        && let Some(rect) = r.rect
+        && let (Some(rect), Some(label_left)) = (r.rect, r.label_left)
     {
-        inline_rename(app, ui, rect, e, depth);
+        inline_rename(app, ui, rect, label_left, e);
     }
     if r.hovered && !e.bodies.is_empty() {
         acts.hover(e.bodies.iter());

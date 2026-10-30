@@ -696,3 +696,104 @@ fn browser_occurrence_clicks_fill_align_components_input() {
     h.step(&json!({"click": {"handle": &handle}})).unwrap();
     assert!(h.app.dialog.as_ref().unwrap().inputs[0].items.is_empty());
 }
+
+/// #8718: the eyes form one column at the rows' right end, right of each name and radio at every
+/// depth, and a click on one hides without activating; the preference puts them back by the fold arrow.
+#[test]
+fn row_eyes_line_up_at_the_right_end_unless_the_preference_keeps_them_left() {
+    let mut h = Harness::new();
+    h.app.run("solid.box", json!({"length":10,"width":10,"height":10,"body_name":"Top"})).unwrap();
+    let part = h.app.run("component.create", json!({"name":"Part"})).unwrap()["occurrence"].as_u64().unwrap();
+    h.app.run("solid.box", json!({"length":10,"width":10,"height":10,"corner":[20,0,0],"body_name":"Inner"})).unwrap();
+    h.app.run("component.activate", json!({"component":0})).unwrap();
+    h.settle();
+    let placement = format!("occurrence:{part}");
+    let eye = |name: &str| handle_at(&format!("eye:{name}")).unwrap_or_else(|| panic!("eye:{name}"));
+    let label = |name: &str| rect_of(&format!("row_label:{name}")).unwrap_or_else(|| panic!("row_label:{name}"));
+    let activate = || handle_at(&format!("activate:{placement}")).unwrap();
+    let card = rect_of("browser:card").unwrap();
+    let column = eye(&placement).x;
+    for name in ["Bodies", "Top", "Inner", placement.as_str()] {
+        assert!((eye(name).x - column).abs() < 0.5, "{name}: {} is off the column at {column}", eye(name).x);
+    }
+    for name in ["Bodies", "Top", "Inner"] {
+        assert!(eye(name).x > label(name).right(), "{name}: the eye is right of the name");
+    }
+    assert!(column > activate().x + 40.0 && column > card.right() - 40.0, "the eye sits at the row's end, apart from the radio");
+    assert!(eye("Inner").y > eye(&placement).y + 10.0, "the body sits under its placement");
+    let indent = |name: &str| handle_at(&format!("indent:{name}")).unwrap_or_else(|| panic!("indent:{name}")).x;
+    assert!((indent("Inner") - indent("Part:1") - super::INDENT).abs() < 0.5, "one level deeper, one indent further right");
+    assert!((label("Inner").left() - label("Top").left()).abs() < 0.5, "bodies at one depth start their names together");
+    // Its tip shows by the eye, not under the name.
+    h.step(&json!({"move":{"handle":"eye:Top"}})).unwrap();
+    h.frames(60);
+    h.frame();
+    let mut tip = None;
+    for clipped in &h.shapes {
+        crate::test_support::each_shape(&clipped.shape, &mut |s| {
+            if let egui::Shape::Text(t) = s
+                && t.galley.text() == "Hide"
+            {
+                tip = Some(t.pos.x + t.galley.rect.center().x);
+            }
+        });
+    }
+    let tip = tip.expect("the eye's Hide tip");
+    assert!(tip > label("Top").right(), "the tip at {tip} is by the eye at {}", eye("Top").x);
+
+    // Between the fold arrow and the radio, a click neither folds nor activates.
+    let (fold, radio) = (handle_at(&format!("fold:{placement}")).unwrap(), activate());
+    assert!(radio.x - fold.x >= 24.0, "the radio keeps clear of the fold arrow: {fold:?} {radio:?}");
+    for dx in [11.0, 14.0] {
+        h.frames(40);
+        h.step(&json!({"click":[fold.x + dx, fold.y]})).unwrap();
+        h.settle();
+        assert!(handle_at("indent:Inner").is_some(), "{dx}: the placement stays open");
+        assert_eq!(h.app.session.active_component, 0, "{dx}: nothing is activated");
+    }
+    h.frames(40);
+    h.step(&json!({"click":{"handle":format!("eye:{placement}")}})).unwrap();
+    assert!(h.app.session.occurrence_hidden(&[part]), "the placement's eye hides it");
+    h.step(&json!({"click":{"handle":"eye:Top"}})).unwrap();
+    assert!(h.app.session.visibility.hidden_bodies.iter().any(|b| b == "Top"), "the body's eye hides it");
+    assert_eq!(h.app.session.active_component, 0, "an eye click activates nothing");
+    assert!(h.app.session.active_occurrence_path.is_none());
+
+    h.call("ui.prefs", json!({"browser_eye_left": true}));
+    h.settle();
+    assert!(eye("Top").x < label("Top").left() && eye(&placement).x < activate().x, "beside the fold arrow, as before");
+    assert!((eye("Inner").x - eye(&placement).x - super::INDENT).abs() < 0.5, "one level deeper, one indent further right");
+    h.step(&json!({"click":{"handle":"eye:Top"}})).unwrap();
+    assert!(!h.app.session.visibility.hidden_bodies.iter().any(|b| b == "Top"), "the eye still shows it");
+    assert_eq!(h.app.session.active_component, 0);
+}
+
+/// #8718: with the rows overflowing the card, an eye at the rows' end stays clear of the scroll
+/// bar laid over them: a click on it hides the sketch and scrolls nothing.
+#[test]
+fn an_eye_at_the_row_end_takes_its_click_from_the_scroll_bar() {
+    let mut h = Harness::new();
+    h.call("ui.resize", json!({"width":1400,"height":900}));
+    for i in 0..35 {
+        h.app.run("sketch.create", json!({"plane":"XY", "name":format!("Sketch{i}")})).unwrap();
+        h.app.run("sketch.finish", json!({})).unwrap();
+    }
+    h.settle();
+    assert!(handle_at("row:Sketch34").is_none(), "the rows overflow the card");
+    let card = rect_of("browser:card").unwrap();
+    let eye = handle_at("eye:Sketch3").unwrap();
+    let row = handle_at("row:Sketch3").unwrap();
+    let bar = h.ctx.global_style().spacing.scroll.bar_width;
+    let row_rect = drawn_rows().into_iter().find(|r| r.0 == "Sketch3").unwrap().1;
+    assert!(card.contains_rect(row_rect));
+    let half = (Tokens::get().space_16 + Tokens::get().space_3) / 2.0;
+    assert!(eye.x + half <= row_rect.right() - bar, "the eye at {} is left of the bar along {}", eye.x, row_rect.right());
+    // The bar widens under the pointer before the click.
+    h.step(&json!({"move":[row_rect.right() - 3.0, eye.y]})).unwrap();
+    h.frames(30);
+    // The eye's edge nearest the bar.
+    h.step(&json!({"click":[eye.x + half - 1.0, eye.y]})).unwrap();
+    h.settle();
+    assert_eq!(h.app.session.visibility.hidden_sketches.len(), 1, "the eye hides its sketch");
+    assert_eq!(handle_at("row:Sketch3"), Some(row), "the list did not scroll");
+}

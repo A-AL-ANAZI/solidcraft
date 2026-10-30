@@ -2698,6 +2698,7 @@ impl SolveApp {
             toolbar::toolbar(self, ui);
         }
         theme::TabAccent::publish(self, ui.ctx());
+        browser::publish_row_prefs(self, ui.ctx());
         if !floating {
             agent_chat::show(self, ui);
         }
