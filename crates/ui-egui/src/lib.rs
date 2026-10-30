@@ -1409,6 +1409,18 @@ impl SolveApp {
         });
     }
 
+    /// A command that needs one choice from a short list: its menu under the button that started it
+    /// (a second click closes it), or in the middle of the viewport when started without one
+    /// (command search, a shortcut, `ui.start`).
+    fn open_choice_menu(&mut self, opener: Option<egui::Rect>, target: context_menu::Target) {
+        if let Some(rect) = opener {
+            context_menu::toggle_for(self, rect, rect.left_bottom(), target);
+        } else {
+            let at = self.viewport.rect.map(|rect| rect.center()).unwrap_or(egui::pos2(300.0, 200.0));
+            context_menu::open_for(self, at, target);
+        }
+    }
+
     /// Start an interactive command with its menu anchored below the invoking button.
     pub(crate) fn start_at(&mut self, id: &str, opener: Option<egui::Rect>) {
         self.start_with_variant_memory(id, true, opener);
@@ -1538,6 +1550,17 @@ impl SolveApp {
         if id == "view.layout" {
             let mode = if self.ui.layout == shell::LayoutMode::Floating { "compact" } else { "floating" };
             let _ = self.run(id, json!({"mode":mode}));
+            return;
+        }
+        // A display choice opens its choices, as the navigation bar's menus do: run with no
+        // parameters it could only fail (#8868).
+        let choice = match id {
+            "view.visual_style" => Some(context_menu::Target::VisualStyle),
+            "view.tool" => Some(context_menu::Target::ViewTool),
+            _ => None,
+        };
+        if let Some(target) = choice {
+            self.open_choice_menu(opener, target);
             return;
         }
         if id == "view.render_focus" {
