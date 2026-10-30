@@ -2301,7 +2301,7 @@ impl SolveApp {
     fn try_fitted_bounds(&self, cam: Camera, bounds: &solidcraft_engine::geom::Aabb3) -> Option<Camera> {
         let layout = self.viewport.layout.as_ref()?;
         if render_workspace::active(self) {
-            return viewport_layout::fit_product_bounds(cam, bounds, layout);
+            return viewport_layout::fit_product_bounds(cam, bounds, &render_workspace::picture_layout(self, layout));
         }
         viewport_layout::fit_bounds(cam, bounds, layout, self.view_fov())
     }
