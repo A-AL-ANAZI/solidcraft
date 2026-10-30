@@ -368,6 +368,18 @@ pub struct UiState {
     pub tool_cursor: bool,
 }
 
+impl UiState {
+    fn pick_mode(&self) -> &'static str {
+        if self.pick_components {
+            "component"
+        } else if self.pick_bodies {
+            "body"
+        } else {
+            "face"
+        }
+    }
+}
+
 impl Default for UiState {
     fn default() -> Self {
         UiState {

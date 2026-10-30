@@ -4432,6 +4432,35 @@ fn render_workspace_pick_stage_tools_filter_sample_clicks_with_shots_shown_and_h
 }
 
 #[test]
+fn modelling_select_panel_shows_and_clears_renders_component_pick() {
+    use egui::accesskit::{Role, Toggled};
+    const BODY: &str = "Select bodies (a face picks its body)";
+    const COMPONENT: &str = "Select components (a face picks its component)";
+    let (mut h, _) = render_pick_sample();
+    h.step(&json!({"click":{"handle":"render:pick:component"}})).unwrap();
+    enter(&mut h.app, false).unwrap();
+    h.settle();
+    h.step(&json!({"click":{"handle":"tab:VIEW"}})).unwrap();
+    h.step(&json!({"click":{"handle":"panel:VIEW:SELECT"}})).unwrap();
+
+    let check = |h: &Harness, body: bool, component: bool| {
+        assert_eq!((h.app.ui.pick_bodies, h.app.ui.pick_components), (body, component));
+        let tree = h.output.accesskit_update.as_ref().unwrap();
+        for (label, on) in [(BODY, body), (COMPONENT, component)] {
+            let node = tree.nodes.iter().find(|(_, n)| n.role() == Role::CheckBox && n.label() == Some(label));
+            assert_eq!(node.and_then(|(_, n)| n.toggled()), Some(if on { Toggled::True } else { Toggled::False }), "{label}");
+        }
+    };
+    check(&h, false, true);
+    h.step(&json!({"widget":"Faces"})).unwrap();
+    for (label, body, component) in [(COMPONENT, false, false), (BODY, true, false), (COMPONENT, false, true), (BODY, true, false)] {
+        h.step(&json!({"widget":label})).unwrap();
+        check(&h, body, component);
+        assert!(h.app.ui.pick_off.iter().any(|kind| kind == "faces"), "changing pick mode must preserve the panel's Faces filter");
+    }
+}
+
+#[test]
 fn render_workspace_click_modifiers_clear_and_browser_share_selection() {
     use solidcraft_engine::Sel;
     let mut h = Harness::new();
