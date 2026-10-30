@@ -456,6 +456,8 @@ fn table(app: &mut SolveApp, ui: &mut egui::Ui, d: &mut ParamsDialog, rows: &[&R
         Column::new("Comment", 1.0).flex(),
         Column::new("Actions", 0.0).icon_only().min_content_width(ui_kit::table_row_height()),
     ];
+    // An expression being edited may open over the cells to its right, up to the table's edge.
+    let right = ui.max_rect().right().min(ui.clip_rect().right());
     ui_kit::table_custom(ui, salt, &columns, crate::i18n::tr("manage.empty"), |ui, table| {
         // The Name heading sorts every section at once, each inside itself (#8563).
         table.headers(ui, |ui, index| {
@@ -543,11 +545,16 @@ fn table(app: &mut SolveApp, ui: &mut egui::Ui, d: &mut ParamsDialog, rows: &[&R
                 let mut expression = d.editing.get(&r.name).cloned().unwrap_or_else(|| r.expression.clone());
                 let live = (expression != r.expression).then(|| check(app, &expression, &r.unit));
                 let invalid = matches!(live, Some(Err(_))) || (live.is_none() && r.error.is_some());
+                let (shown, error) = match (&live, &r.error) {
+                    (Some(Err(message)), _) | (None, Some(message)) => (message.clone(), true),
+                    (Some(Ok(value)), _) => (value.clone(), false),
+                    (None, None) => (show_value(r), false),
+                };
                 row.cell(|ui| {
                     let id = ui.make_persistent_id(("pexpr", salt, &r.name));
                     let focused = ui.memory(|m| m.has_focus(id) || m.had_focus_last_frame(id));
-                    let response = ui_kit::cell_editor(ui, id, &mut expression, "Expression", invalid);
-                    crate::scenario::publish_handle(&format!("param:{}", r.name), response.rect.center());
+                    let response = ui_kit::wide_cell_editor(ui, id, &mut expression, "Expression", invalid, right, (&shown, error));
+                    crate::scenario::publish_target_as(&format!("param:{}", r.name), &format!("param:{}", r.name), response.rect);
                     if salt == "fav" {
                         crate::scenario::publish_handle(&format!("param:favorite:{}", r.name), response.rect.center());
                     }
@@ -574,12 +581,7 @@ fn table(app: &mut SolveApp, ui: &mut egui::Ui, d: &mut ParamsDialog, rows: &[&R
                     }
                 });
                 row.cell(|ui| {
-                    let (text, error) = match (&live, &r.error) {
-                        (Some(Err(message)), _) | (None, Some(message)) => (message.clone(), true),
-                        (Some(Ok(value)), _) => (value.clone(), false),
-                        (None, None) => (show_value(r), false),
-                    };
-                    ui_kit::text(ui, &text, ui_kit::Text::Value(&format!("value:{}", r.name), error)).on_hover_text(&text);
+                    ui_kit::text(ui, &shown, ui_kit::Text::Value(&format!("value:{}", r.name), error)).on_hover_text(&shown);
                 });
                 row.cell(|ui| {
                     let mut comment = d.comments.get(&r.name).cloned().unwrap_or_else(|| r.comment.clone());
@@ -606,7 +608,7 @@ fn table(app: &mut SolveApp, ui: &mut egui::Ui, d: &mut ParamsDialog, rows: &[&R
         }
         if salt == "user" {
             if d.adding {
-                ui.push_id("parameter_draft", |ui| add_row(app, ui, table, d));
+                ui.push_id("parameter_draft", |ui| add_row(app, ui, table, d, right));
             }
             if table.add_prompt(ui, "Add parameter", "Add parameter").clicked() {
                 d.adding = true;
@@ -636,7 +638,7 @@ fn enter_for(ui: &mut egui::Ui, focused: bool) -> bool {
 }
 
 /// The add row, one cell per column of the user table it ends.
-fn add_row(app: &mut SolveApp, ui: &mut egui::Ui, table: &mut ui_kit::Table<'_>, d: &mut ParamsDialog) {
+fn add_row(app: &mut SolveApp, ui: &mut egui::Ui, table: &mut ui_kit::Table<'_>, d: &mut ParamsDialog, right: f32) {
     let name_id = ui.make_persistent_id("pnew_name");
     let expr_id = ui.make_persistent_id("pnew_expr");
     let comment_id = ui.make_persistent_id("pnew_comment");
@@ -667,10 +669,14 @@ fn add_row(app: &mut SolveApp, ui: &mut egui::Ui, table: &mut ui_kit::Table<'_>,
             crate::scenario::publish_handle("param:new:unit", response.rect.center());
         });
         let unit = UNITS.get(d.new_unit).copied().unwrap_or("mm");
+        // A blank expression is not yet an error: nothing to show, and nothing to add.
+        let live = if d.new_expr.trim().is_empty() { Ok(String::new()) } else { new_check(app, d, unit) };
+        let (value, invalid) = match live {
+            Ok(v) => (v, false),
+            Err(e) => (e, true),
+        };
         row.cell(|ui| {
-            // A blank expression is not yet an error: nothing to show, and nothing to add.
-            let invalid = !d.new_expr.trim().is_empty() && new_check(app, d, unit).is_err();
-            let response = ui_kit::cell_editor(ui, expr_id, &mut d.new_expr, "Expression", invalid);
+            let response = ui_kit::wide_cell_editor(ui, expr_id, &mut d.new_expr, "Expression", invalid, right, (&value, invalid));
             select_all_on_tab(ui, &response, &d.new_expr);
             crate::scenario::publish_handle("param:new:expression", response.rect.center());
             let completed = complete(ui, &response, &mut d.new_expr);
@@ -678,11 +684,6 @@ fn add_row(app: &mut SolveApp, ui: &mut egui::Ui, table: &mut ui_kit::Table<'_>,
             left |= !completed && response.lost_focus();
         });
         row.cell(|ui| {
-            let live = if d.new_expr.trim().is_empty() { Ok(String::new()) } else { new_check(app, d, unit) };
-            let (value, invalid) = match live {
-                Ok(v) => (v, false),
-                Err(e) => (e, true),
-            };
             ui_kit::text(ui, &value, ui_kit::Text::Value("new_value", invalid)).on_hover_text(&value);
         });
         row.cell(|ui| {
@@ -1565,5 +1566,38 @@ mod tests {
             assert!(small.contains(crate::scenario::handle_at("dialog:ok").unwrap()));
             assert!(crate::scenario::rect_of("dialog:body:viewport").unwrap().height() > 0.0);
         }
+    }
+    /// #9358: a formula longer than its column opens wide while it is edited, over the cells to
+    /// its right, so all of it shows; Enter applies it and the field goes back into its column.
+    /// A formula that fits stays in its cell.
+    #[test]
+    fn a_long_expression_opens_wide_while_edited_and_enter_applies_it() {
+        let long = "width + width + width + width + width + width + width + width + width + width";
+        let mut h = crate::scenario::Harness::new();
+        h.app.home.open = false;
+        h.app.run("parameters.add", json!({"name":"width","expression":"1 mm"})).unwrap();
+        h.app.run("parameters.add", json!({"name":"length","expression":long})).unwrap();
+        h.step(&json!({"start":"parameters.change"})).unwrap();
+        h.frames(3);
+        let cell = crate::scenario::rect_of("param:length").unwrap();
+        assert!(crate::scenario::rect_of("param:width").unwrap().width() <= cell.width() + 0.5);
+
+        h.step(&json!({"click":{"handle":"param:length"}})).unwrap();
+        h.frames(2);
+        let wide = crate::scenario::rect_of("param:length").unwrap();
+        assert!(wide.width() > cell.width() * 1.5, "the edited formula opens wide: {wide:?} vs {cell:?}");
+        assert!((wide.left() - cell.left()).abs() < 1.0, "it opens from its own cell: {wide:?} vs {cell:?}");
+
+        // The open field wraps, so the end of the text is Ctrl+End.
+        h.run(&json!([{"key":"End","cmd":true}, {"text":" * 2"}, {"key":"Enter"}])).unwrap();
+        h.frames(2);
+        assert_eq!(h.app.session.doc.param("length").unwrap().expr, format!("{long} * 2"));
+        let after = crate::scenario::rect_of("param:length").unwrap();
+        assert!(after.width() <= cell.width() + 0.5, "applied, the field is back in its column: {after:?}");
+
+        h.step(&json!({"click":{"handle":"param:width"}})).unwrap();
+        h.frames(2);
+        let short = crate::scenario::rect_of("param:width").unwrap();
+        assert!(short.width() <= cell.width() + 0.5, "a formula that fits stays in its cell: {short:?} vs {cell:?}");
     }
 }
