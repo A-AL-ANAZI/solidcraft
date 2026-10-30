@@ -475,6 +475,14 @@ fn send_events(design: &DesignWatch, lines: &Lines, stop: &AtomicBool, mut seen:
     }
 }
 
+/// What this app's control channel does beyond the methods every version has, for a client to
+/// find out before it relies on it (an older app answers `control.capabilities` with "unknown
+/// method"). `param_check`: the levels `engine.execute`, `engine.batch` and `engine.script` take
+/// as a request's own parameter check (#9184).
+fn capabilities() -> Value {
+    json!({"param_check": solidcraft_engine::schema::ParamCheck::ALL.map(|l| l.name())})
+}
+
 /// Write `reply` on the connection: through its subscription once it has one.
 fn answer(out: &mut TcpStream, events: Option<&Subscription>, reply: &Value) -> std::io::Result<()> {
     match events {
@@ -535,15 +543,20 @@ fn serve_with(
                 let id = msg.get("id").cloned().unwrap_or(Value::Null);
                 let method = msg.get("method").and_then(Value::as_str).unwrap_or("").to_string();
                 let params = msg.get("params").cloned().unwrap_or(json!({}));
-                // A request that timed out may have finished since (#1618). `control.running` only
-                // looks, so it leaves that reply where it is.
-                let late = pending.as_ref().filter(|_| method != "control.running").and_then(|p| match p.reply.try_recv() {
+                // A request that timed out may have finished since (#1618). `control.running` and
+                // `control.capabilities` only look, so they leave that reply where it is.
+                let late = pending.as_ref().filter(|_| !matches!(method.as_str(), "control.running" | "control.capabilities")).and_then(|p| match p
+                    .reply
+                    .try_recv()
+                {
                     Ok(reply) => Some(reply),
                     Err(TryRecvError::Disconnected) => Some(json!({"ok": false, "error": "the app ended the request without a reply"})),
                     Err(TryRecvError::Empty) => None,
                 });
                 let mut r = if method == "control.running" {
                     json!({"ok": true, "result": running.result(connection)})
+                } else if method == "control.capabilities" {
+                    json!({"ok": true, "result": capabilities()})
                 } else if method == "control.pending" {
                     match (pending.take(), late) {
                         (None, _) => json!({"ok": true, "result": {"pending": null}}),
@@ -750,6 +763,9 @@ mod tests {
         let mut watcher = open();
         let (r, rows) = running(&mut watcher, &|_| true);
         assert!(r["ok"] == true && rows.is_empty(), "idle: {r}");
+        // What the app's control channel does beyond the methods every version has (#9184).
+        let r = watcher(json!({"id": 0, "method": "control.capabilities", "token": token}));
+        assert_eq!((&r["ok"], &r["result"]["param_check"]), (&json!(true), &json!(["off", "warn", "strict"])), "{r}");
 
         let mut export = open();
         let path = "/private/part.step";
@@ -781,6 +797,9 @@ mod tests {
         let own: Vec<&Value> = r["result"]["running"].as_array().unwrap().iter().filter(|row| row["self"] == true).collect();
         assert_eq!(own.len(), 1, "{r}");
         assert_eq!(own[0]["command"], "file.export", "{r}");
+        // So may it ask what the app can do: answered at once, not refused as busy.
+        let r = export(json!({"id": 8, "method": "control.capabilities"}));
+        assert_eq!(r["result"]["param_check"], json!(["off", "warn", "strict"]), "{r}");
 
         gate_tx.send(()).unwrap();
         assert_eq!(queued.join().unwrap()["result"], "engine.batch");

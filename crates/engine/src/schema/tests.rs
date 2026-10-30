@@ -361,6 +361,13 @@ fn the_level_survives_a_new_design() {
     assert_eq!(s.scratch().param_check, ParamCheck::Strict);
 }
 
+#[test]
+fn a_level_is_read_back_from_its_name() {
+    for level in ParamCheck::ALL {
+        assert_eq!(ParamCheck::parse(level.name()), Some(level));
+    }
+}
+
 /// Whether `v` conforms to `node` of the schema `root`, for the keywords these schemas use
 /// apart from `pattern`: `type`, `properties`, `required`, `additionalProperties: false`,
 /// `items`, `minItems`, `maxItems`, `uniqueItems`, `enum`, `minLength`, `maxLength`, `minimum`,

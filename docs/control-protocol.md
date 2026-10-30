@@ -129,6 +129,12 @@ turn behind another. `command` is the command id of `engine.execute` (a known on
 paths and expressions stay with the connection that sent them. `self` marks the asking
 connection's own request. `{"running": []}` when the app is idle.
 
+`control.capabilities` says what this app's control channel does beyond the methods every
+version has, so a client can find out before it relies on it: `{"param_check": ["off", "warn",
+"strict"]}`, the levels a request's own `param_check` takes (below). It is answered at once, like
+`control.running`, also on a `busy` connection. An app older than it answers ``unknown method
+`control.capabilities` ``; a feature added later is listed here too.
+
 Any request's `params` may carry `allow_paths: ["/abs/folder", …]`: every file that request
 reads, writes or deletes (command paths such as `file.export`'s `path` or `doc.recovery_*`'s
 `dir`, `ui.render`, `ui.screenshot`) must then lie inside one of those folders after `..` and
@@ -139,6 +145,20 @@ a hidden folder, the open design's folder (whose hidden files stay out of reach)
 or saved a design in; each counts on the open design folder's terms. The bridged
 MCP server sends its folders this way on every request ([mcp.md](mcp.md)). Without
 `allow_paths` file paths are not limited: a client holding the token can do what the user can.
+
+`engine.execute`, `engine.batch` and `engine.script` may carry `param_check: "off" | "warn" |
+"strict"` in their `params`: the commands of that request are checked against their typed
+contracts at that level, whatever the app's own (which is `off`), as a headless session's
+`--param-check` checks them (#9184). `warn` runs a call that breaks its contract and adds
+`param_warnings` to its result; `strict` refuses it (a batch before its first step), and the
+design is left as it was. Every reply to such a request says the level it was checked at as
+`param_check`, beside `ok`. A command that switches to another design (`component.edit_in_place`,
+`component.finish_edit`, `view.next_tab`, `view.previous_tab`) has its parameters checked at
+that level before it runs, and then runs at the app's own level, as each design keeps its own.
+Any other word is refused; other methods ignore the field. An app older than this ignores the field and its reply has no
+`param_check`, so a client that needs the check asks `control.capabilities` first and treats a
+reply without `param_check` as unchecked. The bridged MCP server asks once per connection
+([mcp.md](mcp.md)).
 
 ## Engine
 

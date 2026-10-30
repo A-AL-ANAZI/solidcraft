@@ -28,12 +28,24 @@ pub enum ParamCheck {
 }
 
 impl ParamCheck {
+    /// Every level, least checking first.
+    pub const ALL: [ParamCheck; 3] = [ParamCheck::Off, ParamCheck::Warn, ParamCheck::Strict];
+
     pub fn parse(s: &str) -> Option<ParamCheck> {
         match s.trim().to_ascii_lowercase().as_str() {
             "off" => Some(ParamCheck::Off),
             "warn" => Some(ParamCheck::Warn),
             "strict" => Some(ParamCheck::Strict),
             _ => None,
+        }
+    }
+
+    /// The level's word, as [`ParamCheck::parse`] reads it (the control channel's `param_check`).
+    pub fn name(self) -> &'static str {
+        match self {
+            ParamCheck::Off => "off",
+            ParamCheck::Warn => "warn",
+            ParamCheck::Strict => "strict",
         }
     }
 }
