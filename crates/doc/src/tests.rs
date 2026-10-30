@@ -486,6 +486,8 @@ fn hostile_expressions_never_panic() {
         "deg",
         "x",
         "sqrt",
+        "cosh",
+        "atanh",
         "pow",
         "min",
         "max",
