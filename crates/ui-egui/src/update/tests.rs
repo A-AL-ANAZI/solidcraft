@@ -750,3 +750,48 @@ fn install_selection_refreshes_the_button_and_progress_before_completion() {
     assert!(h.app.updater.installed.is_none());
     tx.send(()).unwrap();
 }
+
+#[test]
+fn cancel_download_leaves_downloading_immediately() {
+    // Cancel must clear the job from the UI at once so the card leaves "Downloading" without
+    // waiting for a stalled feed or checksum GET (#8908).
+    let dir = scratch();
+    let target = dir.0.join("SolidCraft.AppImage");
+    let name = asset_name(&InstallKind::AppImage(target.clone()), std::env::consts::ARCH, "999.1.0").unwrap();
+    let mut h = crate::scenario::Harness::new();
+    h.app.preferences.check_updates = false;
+    let mut shown = release();
+    shown.tag = "v999.0.0".into();
+    h.app.updater.release = Some(shown);
+    h.app.updater.kind = Some(InstallKind::AppImage(target));
+    h.app.updater.open = true;
+    let (gate_tx, gate_rx) = std::sync::mpsc::channel();
+    let gate_rx = std::sync::Mutex::new(gate_rx);
+    h.app.services.http_get = Some(Arc::new(move |url| {
+        if url == LATEST_API {
+            return Ok(json!({"tag_name":"v999.1.0", "assets":[
+                {"name": name, "browser_download_url":format!("https://github.com/tangency-labs/solidcraft/releases/download/v999.1.0/{name}")},
+                {"name": install::SUMS, "browser_download_url":"https://github.com/tangency-labs/solidcraft/releases/download/v999.1.0/SHA256SUMS.txt"}
+            ]}).to_string().into_bytes());
+        }
+        // Stall checksum GET until the test ends so Cancel has to work before the body download.
+        let _ = gate_rx.lock().unwrap().recv();
+        Ok(format!("{}  {name}\n", "a".repeat(64)).into_bytes())
+    }));
+    h.app.services.http_download = Some(Arc::new(|_, _, _| Err(FetchError::Failed("download must not start".into()))));
+    start_install(&mut h.app, &egui::Context::default());
+    assert!(h.app.updater.job.is_some());
+    h.frames(2);
+    let cancel = h.widget("Cancel").expect("Cancel while Downloading");
+    h.call("ui.click", json!({"x": cancel[0], "y": cancel[1]}));
+    assert!(h.app.updater.job.is_none(), "Cancel clears the job immediately");
+    assert!(h.app.updater.installed.is_none());
+    assert!(h.app.updater.open, "Cancel leaves the Update window open on Offer");
+    h.frames(2);
+    assert!(
+        h.widget("Remind me later").is_some() || h.widget("Skip this version").is_some() || h.widget("Update now").is_some(),
+        "Offer returns after Cancel"
+    );
+    assert!(h.widget("Updating to 999.1.0.").is_none());
+    let _ = gate_tx.send(());
+}

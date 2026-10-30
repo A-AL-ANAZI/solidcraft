@@ -889,6 +889,12 @@ fn poll_install(app: &mut SolveApp) {
         Err(TryRecvError::Disconnected) => Err("the update stopped".into()),
     };
     app.updater.job = None;
+    // Cancel already cleared the job in the UI; ignore a late "cancelled" result so Offer returns
+    // without an error banner (#8908).
+    if matches!(&result, Err(e) if e == "cancelled" || e.contains("cancelled")) {
+        app.updater.installed = None;
+        return;
+    }
     match &result {
         Ok(install::Outcome::Installer(program, args)) => {
             // The installer replaces this program: start it once SolidCraft has closed. On
@@ -1084,9 +1090,12 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
         Some("restart") => restart(app),
         Some("close") => app.updater.open = false,
         Some("cancel_download") => {
-            if let Some((_, progress)) = &app.updater.job {
+            // Drop the job from the UI at once so Cancel leaves "Downloading" immediately; the
+            // worker still sees the flag and stops at the next feed/checksum/chunk check (#8908).
+            if let Some((_, progress)) = app.updater.job.take() {
                 progress.cancel.store(true, std::sync::atomic::Ordering::Relaxed);
             }
+            app.updater.installed = None;
         }
         _ if closed => app.updater.open = false,
         _ => {}
