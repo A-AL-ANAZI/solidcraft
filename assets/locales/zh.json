@@ -1947,6 +1947,8 @@
   "prefs.origin_plane_names": "原点平面名称",
   "prefs.origin_plane_names_note": "浏览器、对话框和列表中显示的名称。{top} 即 XY，{front} 即 XZ，{right} 即 YZ（Z 轴朝上）。命令、脚本和已保存的设计仍使用 XY、XZ 和 YZ。",
   "prefs.overall_speed": "整体速度",
+  "prefs.persistent_ribbon_pressed": "突出显示已启用的功能区命令",
+  "prefs.persistent_ribbon_pressed_help": "在效果启用时突出显示相应的功能区命令。关闭此选项可保留原来的中性外观和命令帮助。",
   "prefs.perspective_fov": "视场角",
   "prefs.placement": "放置",
   "prefs.prefer_free_sketch_points": "草图点重合时优先选择可移动的点",

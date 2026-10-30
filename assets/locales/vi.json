@@ -1947,6 +1947,8 @@
   "prefs.origin_plane_names": "Tên các mặt phẳng gốc",
   "prefs.origin_plane_names_note": "Tên hiển thị trong trình duyệt, hộp thoại và danh sách. {top} là XY, {front} là XZ và {right} là YZ, với Z hướng lên. Lệnh, script và thiết kế đã lưu vẫn dùng XY, XZ và YZ.",
   "prefs.overall_speed": "Tốc độ tổng thể",
+  "prefs.persistent_ribbon_pressed": "Tô sáng lệnh đang bật trên dải băng",
+  "prefs.persistent_ribbon_pressed_help": "Tô sáng các lệnh trên dải băng khi hiệu ứng của chúng đang bật. Tắt tùy chọn này để giữ giao diện trung tính và trợ giúp lệnh như trước.",
   "prefs.perspective_fov": "Trường nhìn",
   "prefs.placement": "Vị trí đặt",
   "prefs.prefer_free_sketch_points": "Ưu tiên điểm phác thảo có thể di chuyển khi các điểm chồng lên nhau",

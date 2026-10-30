@@ -1947,6 +1947,8 @@
   "prefs.origin_plane_names": "أسماء مستويات الأصل",
   "prefs.origin_plane_names_note": "الأسماء المعروضة في المستعرض والحوارات والقوائم. {top} هو XY و{front} هو XZ و{right} هو YZ، والمحور Z للأعلى. تحتفظ الأوامر والسكربتات والتصاميم المحفوظة بـ XY وXZ وYZ.",
   "prefs.overall_speed": "السرعة العامة",
+  "prefs.persistent_ribbon_pressed": "تمييز أوامر الشريط النشطة",
+  "prefs.persistent_ribbon_pressed_help": "تمييز أوامر الشريط أثناء تفعيل تأثيراتها. أوقف هذا الخيار للاحتفاظ بالمظهر المحايد السابق ومساعدة الأوامر.",
   "prefs.perspective_fov": "مجال الرؤية",
   "prefs.placement": "الموضع",
   "prefs.prefer_free_sketch_points": "تفضيل نقاط الرسم القابلة للتحريك عند تداخل النقاط",
