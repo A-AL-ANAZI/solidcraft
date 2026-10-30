@@ -2083,7 +2083,7 @@
   "recovery.detail": "{file} · {features} ميزة · حُفظ تلقائيًا {when}",
   "recovery.discard_all": "تجاهل الكل",
   "recovery.discard_all_detail": "لا يمكن التراجع عن هذا الإجراء.",
-  "recovery.discard_all_title": "تجاهل {count} من الحفظ التلقائي؟",
+  "recovery.discard_all_title": "تجاهل {count} من عمليات الحفظ التلقائي؟",
   "recovery.discard_all_title_one": "تجاهل حفظ تلقائي واحد؟",
   "recovery.hours_ago": "قبل {count} ساعة",
   "recovery.just_now": "الآن",
