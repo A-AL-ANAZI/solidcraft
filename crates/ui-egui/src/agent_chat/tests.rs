@@ -2657,6 +2657,27 @@ fn no_tool_turn_warning_leaves_answers_and_incomplete_turns_quiet() {
     }
 }
 
+/// A turn that ends with nothing shown because the reply hit its length limit, or the model
+/// declined, says so instead of blaming tool support (#9495).
+#[test]
+fn a_cut_off_or_declined_reply_says_so_instead_of_blaming_tools() {
+    for (reason, said) in [("max_tokens", "ui.agent_chat_reply_cut_off"), ("refusal", "ui.agent_chat_reply_declined")] {
+        let (mut app, _, _) = app_with_script();
+        app.agent_chat.tools_port = Some(12345);
+        start_turn(&mut app, "Make a box".into(), false, None, vec![]);
+        app.agent_chat.on_event(Event::TurnEnded { reason: reason.into() });
+        end_turn(&mut app);
+        assert!(status(&app)["turnWarning"].is_null(), "{reason}");
+        let notices: Vec<&str> = app
+            .agent_chat
+            .items
+            .iter()
+            .filter_map(|i| if let Item::Notice { text, error: false } = i { Some(text.as_str()) } else { None })
+            .collect();
+        assert_eq!(notices, [tr(said)], "{reason}");
+    }
+}
+
 // ---- Tool calls in words (#1457) ----
 
 fn in_mm() -> summary::Units<'static> {

@@ -706,8 +706,12 @@ impl AgentChat {
                 if std::mem::take(&mut self.discard_end) {
                     return Some(Outcome::TurnEnd);
                 }
-                if !matches!(reason.as_str(), "" | "auth" | "error") {
-                    self.notice(format!("({reason})"), false);
+                match reason.as_str() {
+                    "" | "auth" | "error" => {}
+                    // Not a missing tool: the answer ran out of room, or the model declined (#9495).
+                    "max_tokens" => self.notice(tr("ui.agent_chat_reply_cut_off").to_string(), false),
+                    "refusal" => self.notice(tr("ui.agent_chat_reply_declined").to_string(), false),
+                    _ => self.notice(format!("({reason})"), false),
                 }
                 return Some(Outcome::TurnEnd);
             }

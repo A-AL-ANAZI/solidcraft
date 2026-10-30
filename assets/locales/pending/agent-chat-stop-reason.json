@@ -1,0 +1,34 @@
+{
+  "en": {
+    "ui.agent_chat_reply_cut_off": "The reply reached its length limit before it finished, so it may be incomplete. Ask the agent to go on, or for a shorter answer.",
+    "ui.agent_chat_reply_declined": "The model declined to answer this message."
+  },
+  "ar": {
+    "ui.agent_chat_reply_cut_off": "بلغ الرد حد طوله قبل أن يكتمل، لذا قد يكون ناقصًا. اطلب من الوكيل أن يتابع، أو أن يجيب بإيجاز أكبر.",
+    "ui.agent_chat_reply_declined": "رفض النموذج الإجابة عن هذه الرسالة."
+  },
+  "de": {
+    "ui.agent_chat_reply_cut_off": "Die Antwort hat ihre Längengrenze erreicht, bevor sie fertig war, und ist daher vielleicht unvollständig. Bitten Sie den Agenten weiterzumachen oder kürzer zu antworten.",
+    "ui.agent_chat_reply_declined": "Das Modell hat abgelehnt, auf diese Nachricht zu antworten."
+  },
+  "he": {
+    "ui.agent_chat_reply_cut_off": "התשובה הגיעה למגבלת האורך שלה לפני שהסתיימה, ולכן ייתכן שהיא חלקית. יש לבקש מהסוכן להמשיך, או לענות בקצרה יותר.",
+    "ui.agent_chat_reply_declined": "המודל סירב לענות על ההודעה הזו."
+  },
+  "ja": {
+    "ui.agent_chat_reply_cut_off": "応答が終わる前に長さの上限に達したため、不完全な可能性があります。続けるか、もっと短く答えるようエージェントに頼んでください。",
+    "ui.agent_chat_reply_declined": "モデルはこのメッセージへの回答を断りました。"
+  },
+  "ko": {
+    "ui.agent_chat_reply_cut_off": "응답이 끝나기 전에 길이 한도에 도달해 불완전할 수 있습니다. 에이전트에게 계속하거나 더 짧게 답하라고 요청하세요.",
+    "ui.agent_chat_reply_declined": "모델이 이 메시지에 대한 답변을 거절했습니다."
+  },
+  "vi": {
+    "ui.agent_chat_reply_cut_off": "Câu trả lời đã chạm giới hạn độ dài trước khi xong nên có thể chưa đầy đủ. Hãy yêu cầu AI Agent tiếp tục, hoặc trả lời ngắn hơn.",
+    "ui.agent_chat_reply_declined": "Mô hình đã từ chối trả lời tin nhắn này."
+  },
+  "zh": {
+    "ui.agent_chat_reply_cut_off": "回复在完成前达到了长度上限，可能不完整。请让智能体继续，或请它回答得更简短。",
+    "ui.agent_chat_reply_declined": "模型拒绝回答这条消息。"
+  }
+}

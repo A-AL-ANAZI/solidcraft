@@ -263,6 +263,10 @@ short notice when the reply was empty, or when an explicit edit request received
 Ordinary answers to questions do not show it. Edit requests are recognised conservatively from
 English opening words such as “make”, “rename”, or “can you move”; other phrasing may stay quiet.
 Cancelled and failed turns keep their existing messages. Text describing a call is never run.
+A reply that stopped at its length limit, or that the model declined, says that instead of the
+tool-calling notice: an endpoint reports it as `max_tokens` or `refusal` (Anthropic), or as
+`length`, `content_filter` or a refusal (OpenAI-compatible). A tool call cut off at the length
+limit is not run.
 
 ### An agent inside WSL (Windows)
 
