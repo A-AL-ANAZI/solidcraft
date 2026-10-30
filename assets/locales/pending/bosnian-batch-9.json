@@ -1,0 +1,18 @@
+{
+  "bs": {
+    "prefs.browser_eye_left": "Oko pored strelice za skupljanje",
+    "prefs.browser_eye_left_note": "Redovi stabla modela prikazuju oko za prikazivanje/skrivanje pored strelice za skupljanje, kao ranije, umjesto u koloni na desnom kraju redova.",
+    "prefs.hide_constraint_glyphs_zoomed_out": "Sakrij simbole ograničenja kada je prikaz umanjen",
+    "prefs.hide_constraint_glyphs_zoomed_out_note": "Simboli ograničenja nestaju iz prikaza kada je skica toliko umanjena da bi je zatrpali. Isključeno: ostaju fiksne veličine na ekranu pri svakom zumiranju.",
+    "prefs.menu_grid": "Velike ikone",
+    "prefs.menu_list": "Popis",
+    "prefs.menus": "Meniji",
+    "prefs.select_other_hidden": "Izaberi skrivenu geometriju pomoću Izaberi drugo",
+    "prefs.select_other_hidden_help": "Uključeno: obuhvata skrivena tijela, skice i zaklonjene ivice u blizini pokazivača. Isključeno: koristi se izvorni popis vidljive geometrije ispod pokazivača.",
+    "prefs.viewport_analysis_status": "Prikaži status analize u prozoru prikaza",
+    "prefs.viewport_analysis_status_help": "Prikazuje aktivne analize iznad prozora prikaza, otvara njihove legende iz svake stavke, a tipka Esc isključuje najnoviju analizu. Isključite da biste vratili legende u uglovima i prethodno ponašanje tipke Esc.",
+    "ui.ribbon_menus_skip_pinned": "Izostavi prikačene komande iz padajućih menija",
+    "ui.viewport_status_edges": "Ivice: {count}",
+    "ui.viewport_status_from": "iz smjera {direction}"
+  }
+}
