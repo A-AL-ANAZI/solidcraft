@@ -1022,6 +1022,10 @@ preference_settings! {
     /// view (`canvas::boxes_shown`). Off: it is typed in the command window only, which takes the
     /// keyboard after a pick instead, and nothing covers the model (#9479).
     value_boxes_in_view: bool = true, PAGE_DESIGN => check_id("prefs.value_boxes_in_view");
+    /// The Parameters dialog applies an expression as soon as its field is left (#9279). Off: the
+    /// edits wait in the dialog until Apply or OK sets them together, in one rebuild and one undo
+    /// step. Its checkbox is in the dialog itself.
+    parameters_apply_live: bool = true;
     /// A design coming back to its tab reads again the linked designs whose files changed since
     /// it last read them. Off: they wait for Update Links, as before.
     update_changed_links: bool = true, PAGE_DESIGN => check_id("settings.update_changed_links");
