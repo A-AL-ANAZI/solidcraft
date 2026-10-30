@@ -299,6 +299,7 @@ mod view_confirm;
 pub mod view_pick;
 pub mod viewport;
 mod viewport_layout;
+mod viewport_status;
 mod viewport_status_fixture;
 pub mod workspace;
 
@@ -452,7 +453,16 @@ pub struct PreSketchComponent {
     pub opened_in: u64,
 }
 
+/// Which late UI handler has first refusal of this frame's Escape. Reserving input
+/// is distinct from having performed cancellation (`esc_handled`).
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub(crate) enum EscapeOwner {
+    Dialog,
+    Overlay,
+}
+
 pub struct SolveApp {
+    pub(crate) viewport_status: ui_kit::StatusPresentation,
     pub(crate) viewport_status_fixture: viewport_status_fixture::Fixture,
     /// Compact browser embed: retain model panels and joint controls without application chrome.
     pub embedded: bool,
@@ -574,6 +584,7 @@ pub struct SolveApp {
     pub foreign_copy: Option<std::sync::Arc<solidcraft_engine::ForeignCopy>>,
     /// Esc was already acted on this frame (by the shortcuts), so later handlers skip it.
     pub esc_handled: bool,
+    pub(crate) escape_owner: Option<EscapeOwner>,
     /// When Esc was last pressed (input time): a second press soon after finishes the sketch.
     pub last_escape: Option<f64>,
     pub status: Option<(String, f64, bool)>,
@@ -709,6 +720,7 @@ impl SolveApp {
         #[cfg(not(target_arch = "wasm32"))]
         solidcraft_engine::slicer_files::clean_old();
         let mut app = SolveApp {
+            viewport_status: Default::default(),
             viewport_status_fixture: Default::default(),
             session,
             ui: UiState::default(),
@@ -772,6 +784,7 @@ impl SolveApp {
             own_clipboard_stamp: 0,
             foreign_copy: None,
             esc_handled: false,
+            escape_owner: None,
             last_escape: None,
             status: None,
             status_undo: false,
@@ -2475,7 +2488,15 @@ impl SolveApp {
         }
         open_meshing::tick(self, ctx);
         open_meshing::refresh(self, ctx.input(|i| i.time));
-        self.esc_handled = false;
+        // Routing survives a layout re-pass, but never the next input frame. The legacy
+        // policy retains its original per-pass cancellation flag behavior.
+        let first_pass = ctx.current_pass_index() == 0;
+        if first_pass {
+            self.escape_owner = None;
+        }
+        if first_pass || !self.preferences.viewport_analysis_status {
+            self.esc_handled = false;
+        }
         prefs::apply(self, ctx);
         // The view's own dark or light only changes tokens, not egui's visuals: no restyle.
         theme::set_viewport_dark(self.preferences.viewport_theme.dark());

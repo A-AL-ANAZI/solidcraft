@@ -2904,7 +2904,9 @@ fn analysis_uniform(app: &SolveApp) -> [f32; 8] {
 /// While Draft, Accessibility or Curvature Map analysis is on, what each of its colours means and
 /// the values it stands for, at the bottom left of the viewport (#973). The colours alone don't
 /// say, and with colour vision loss they can be hard to tell apart.
-fn analysis_legend(app: &SolveApp, painter: &egui::Painter, rect: Rect) {
+pub(crate) type AnalysisLegend = (&'static str, Option<String>, Vec<(Color32, String, bool)>);
+
+pub(crate) fn analysis_legend_data(app: &SolveApp) -> Option<AnalysisLegend> {
     use solidcraft_engine::SurfaceAnalysis as A;
     let t = Tokens::get();
     let tr = crate::i18n::tr_label;
@@ -2915,7 +2917,7 @@ fn analysis_legend(app: &SolveApp, painter: &egui::Painter, rect: Rect) {
     let dir = |v: Vec3| format!("({:.2}, {:.2}, {:.2})", v.x, v.y, v.z);
     let a = &t.analysis;
     // (title, the direction it measures along, rows of colour, text, hatched).
-    let (title, along, rows): (&str, Option<String>, Vec<(Color32, String, bool)>) = match app.session.analysis {
+    let (title, along, rows) = match app.session.analysis {
         Some(A::Draft { pull, angle }) => (
             tr("Draft Analysis"),
             Some(format!("{} {}", tr("Pull direction"), dir(pull))),
@@ -2940,8 +2942,14 @@ fn analysis_legend(app: &SolveApp, painter: &egui::Painter, rect: Rect) {
                 (col(a.curvature[2]), format!("{} ≤ {}", tr("Radius"), crate::prefs::show_mm(app, radius, 1)), false),
             ],
         ),
-        _ => return,
+        _ => return None,
     };
+    Some((title, along, rows))
+}
+
+fn analysis_legend(app: &SolveApp, painter: &egui::Painter, rect: Rect) {
+    let Some((title, along, rows)) = analysis_legend_data(app) else { return };
+    let t = Tokens::get();
     let (pad, row) = (8.0, 18.0);
     let h = pad * 2.0 + 18.0 + along.as_ref().map_or(0.0, |_| row) + row * rows.len() as f32;
     // Clear Browser and a left History card so the legend is not painted under them (#4515).
@@ -4309,7 +4317,9 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         }
     }
     let overlay_rect = crate::shell::bottom_overlay_rect(app, rect);
-    analysis_legend(app, &painter, overlay_rect);
+    if !app.preferences.viewport_analysis_status {
+        analysis_legend(app, &painter, overlay_rect);
+    }
     crate::frame_rate::paint(app, ui, &painter, overlay_rect);
 
     // ---- interaction ----
@@ -4875,6 +4885,7 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
     axis_view(app, ui, rect);
     crate::view_angles::show(app, ui, rect);
     crate::navigation_bar_view::show(app, ui, rect);
+    crate::viewport_status::show(app, ui.ctx(), rect);
     crate::viewport_status_fixture::show(app, ui.ctx(), rect);
     // The notices and the agent chip first, so the 3D mouse picture can keep clear of them.
     let toasts = transient_messages(app, ui, rect);
@@ -9249,6 +9260,8 @@ mod tests {
         // #973: Draft, Accessibility and Curvature Map say what their colours mean; Zebra and no
         // analysis draw no legend.
         let mut h = crate::scenario::Harness::new();
+        // Keep the existing corner legend available through the HUD compatibility setting.
+        h.app.preferences.viewport_analysis_status = false;
         h.app.home.open = false;
         h.app.run("solid.box", json!({"length":20,"width":20,"height":20})).unwrap();
         let legend = |h: &mut crate::scenario::Harness| {

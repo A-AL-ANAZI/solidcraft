@@ -998,7 +998,7 @@ fn persistent_pressed(app: &SolveApp, id: &str) -> bool {
     app.preferences.persistent_ribbon_pressed && persistent_command(id) && app.session.status_items().iter().any(|item| item.command == id)
 }
 
-fn persistent_button_name(app: &SolveApp, command: &solidcraft_engine::CommandSpec) -> String {
+pub(crate) fn persistent_button_name(app: &SolveApp, command: &solidcraft_engine::CommandSpec) -> String {
     let info = crate::render_workspace::interactive_command_info(app, command);
     let label = crate::workspace::ribbon_button_label(command);
     app.tr_label(if label == command.label { info.label } else { label }).to_string()
@@ -2866,6 +2866,12 @@ pub fn shortcuts(app: &mut SolveApp, ctx: &egui::Context) {
     if app.file_load.busy() {
         return;
     }
+    if app.preferences.viewport_analysis_status
+        && (app.esc_handled || app.escape_owner.is_some())
+        && ctx.input(|input| input.key_pressed(egui::Key::Escape))
+    {
+        return;
+    }
     // File is a custom Area, so it must claim Escape before the underlying editors and
     // sketch shortcuts. Clear raw events too: egui may replay them on a layout pass.
     let file_menu_id = egui::Id::new("sc_file_menu");
@@ -2891,17 +2897,39 @@ pub fn shortcuts(app: &mut SolveApp, ctx: &egui::Context) {
         }
         return;
     }
+    // These owners render after global shortcuts. Leave their Escape available to the
+    // normal window/palette handler, but retain ownership if egui repeats the layout.
+    if ctx.input(|input| input.key_pressed(egui::Key::Escape))
+        && (app.prefs_window.open || app.keymap.open || app.ui.palette_open || ctx.memory(|memory| memory.top_modal_layer().is_some()))
+    {
+        app.escape_owner = Some(crate::EscapeOwner::Overlay);
+        if app.preferences.viewport_analysis_status {
+            app.last_escape = None;
+            return;
+        }
+    }
     if crate::params_dialog::cancel_on_escape(app, ctx) {
         return;
     }
     // A dimension value that is taking the keyboard: letters belong to it (a parameter name
     // starting with L or D), even on the frame before its field holds the focus.
-    if egui::Popup::is_any_open(ctx)
-        || ctx.egui_wants_keyboard_input()
-        || crate::dim_view::editing()
-        || crate::dialogs_save_mesh::popup_open(ctx)
-        || crate::hole_presets::name_prompt_open(ctx, app.dialog.as_ref())
+    let popup_owner =
+        egui::Popup::is_any_open(ctx) || crate::dialogs_save_mesh::popup_open(ctx) || crate::hole_presets::name_prompt_open(ctx, app.dialog.as_ref());
+    let inline_editor = crate::dim_view::editing();
+    if popup_owner
+        || inline_editor
+        || (app.preferences.viewport_analysis_status && app.ui.palette_open)
+        || (ctx.egui_wants_keyboard_input() && !(app.preferences.viewport_analysis_status && app.viewport_status.owns_focus(ctx)))
     {
+        if ctx.input(|input| input.key_pressed(egui::Key::Escape)) {
+            let owner = if app.dialog.is_some() && !popup_owner && !inline_editor { crate::EscapeOwner::Dialog } else { crate::EscapeOwner::Overlay };
+            // Reserve first refusal without claiming that cancellation already occurred.
+            // A dialog's own late handler must still be able to cancel its focused field.
+            app.escape_owner.get_or_insert(owner);
+            if app.preferences.viewport_analysis_status {
+                app.last_escape = None;
+            }
+        }
         return;
     }
     let (keys, mods) = ctx.input(|i| {
@@ -2989,6 +3017,8 @@ pub fn shortcuts(app: &mut SolveApp, ctx: &egui::Context) {
                 // Not while a tool is still out (its first Esc only ended a chain): this press
                 // puts it down, and the next quick one finishes.
                 if again
+                    && !(app.preferences.viewport_analysis_status
+                        && (app.viewport_status.open_key.is_some() || crate::viewport_status::has_effect(app)))
                     && app.tool.is_none()
                     && app.dialog.is_none()
                     && let Some(sketch) = app.session.active_sketch
@@ -3013,6 +3043,8 @@ pub fn shortcuts(app: &mut SolveApp, ctx: &egui::Context) {
                     crate::tools::finish(app);
                 } else if app.dialog.is_some() || app.pending_feature_edit.is_some() {
                     crate::dialogs::cancel(app);
+                } else if app.preferences.viewport_analysis_status && crate::viewport_status::escape(app, repeat) {
+                    app.last_escape = None;
                 } else if !app.session.selection.is_empty() || app.session.active_sketch.is_none() {
                     crate::edit_clipboard::drop_cut(app);
                     app.tree.picked_joints.clear();

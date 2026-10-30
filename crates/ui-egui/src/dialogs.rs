@@ -3054,6 +3054,7 @@ pub(crate) fn corner_confirms(d: &Dialog) -> bool {
 /// Sketch Palette keeps the right there, and the dialog takes the left so both stay on screen.
 /// With Dialogs › In the left column it holds the left column instead (`dialog_column`).
 pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
+    let escape_routed_here = !app.preferences.viewport_analysis_status || app.escape_owner.is_none_or(|owner| owner == crate::EscapeOwner::Dialog);
     // A click in the view's corner is for the dialog open this frame, or for none.
     let corner = app.viewport.corner.take();
     app.viewport.corner_ok = false;
@@ -3248,7 +3249,7 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
                         apply_again = false;
                     }
                     crate::ui_kit::Action::Cancel => {
-                        if !app.esc_handled || !ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+                        if (!app.esc_handled && escape_routed_here) || !ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
                             cancel = true;
                         }
                     }
@@ -3321,7 +3322,7 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
     if !preset_prompt && !report_active && enter_applies && app.applying.is_none() && (enter || canvas_enter || (enter_free && nothing_focused)) {
         ok = true;
     }
-    if !preset_prompt && !report_active && esc && !app.esc_handled {
+    if !preset_prompt && !report_active && esc && !app.esc_handled && escape_routed_here {
         app.esc_handled = true;
         cancel = true;
     }

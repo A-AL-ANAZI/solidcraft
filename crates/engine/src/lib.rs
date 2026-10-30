@@ -472,8 +472,10 @@ pub struct Session {
     /// The seams `inspect.continuity` last measured, for the viewport to shade. View state: not
     /// part of the design and not an undo step.
     pub continuity: Vec<ContinuitySeam>,
-    /// Transient activation order only; effect settings remain in their existing fields.
+    /// Oldest active slot first; replacing an effect retains its row position.
     status_order: Vec<status_items::StatusId>,
+    /// Successful source activations, independently of row order and sharing policy.
+    status_activation: Vec<status_items::StatusId>,
     single_surface_analysis: bool,
     latest_analysis: Option<status_items::StatusId>,
     /// What is hidden or shown in the view (`browser.visibility`): saved with the design and an
@@ -656,6 +658,7 @@ impl Session {
             analysis: None,
             continuity: Vec::new(),
             status_order: Vec::new(),
+            status_activation: Vec::new(),
             single_surface_analysis: true,
             latest_analysis: None,
             checkpoints: Vec::new(),
@@ -1506,6 +1509,7 @@ impl Session {
             analysis: None,
             continuity: Vec::new(),
             status_order: Vec::new(),
+            status_activation: Vec::new(),
             single_surface_analysis: self.single_surface_analysis,
             latest_analysis: None,
             checkpoints: Vec::new(),
