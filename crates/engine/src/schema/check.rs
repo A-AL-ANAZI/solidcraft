@@ -129,6 +129,16 @@ pub(crate) fn whole(message: impl std::fmt::Display) -> String {
     format!("{WHOLE}{message}")
 }
 
+/// Marks a deserializer's message that the handler gives after the key and a colon, as it is
+/// (serde's own wording for a saved reference, such as "missing field `at`", which
+/// [`parse_issue`] would otherwise reword).
+const KEYED: char = '\u{3}';
+
+/// `message`, to follow the key and a colon as it is (see [`KEYED`]).
+pub(crate) fn keyed(message: impl std::fmt::Display) -> String {
+    format!("{KEYED}{message}")
+}
+
 /// Marks a deserializer's message that carries its own path: an error from a flattened
 /// `FeatureCommon`, which serde can't locate. The path (one of its field names) and the error
 /// follow as JSON.
@@ -233,6 +243,9 @@ pub(crate) fn parse_issue(e: &serde_path_to_error::Error<serde_json::Error>) -> 
         Some((field, inner)) => (format!("{path}.{field}"), inner),
         None => (path, inner),
     };
+    if let Some(after) = inner.strip_prefix(KEYED) {
+        return Issue { path: path.clone(), message: truncate(&format!("`{path}`: {after}"), MAX_WHOLE_LEN), suggestion: None };
+    }
     if let Some(complete) = inner.strip_prefix(WHOLE) {
         // The handler's own message, which names the caller's value: in full up to a generous
         // cap, since the contract also checks keys the handler ignores (`side` without `thin`).
