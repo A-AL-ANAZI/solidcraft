@@ -408,6 +408,11 @@ pub struct Services {
     pub graphics_path: Option<String>,
     /// Linux: the window system this run uses, `wayland` or `x11` (Preferences shows it, #3083).
     pub window_system: Option<&'static str>,
+    /// The desktop's dark (`Some(true)`) or light preference as the host reads it, for Theme:
+    /// System where the window toolkit does not report it (Linux desktops, #7944). Called every
+    /// frame, so it only reads a value kept up to date elsewhere. None, or `None` from it: the
+    /// window toolkit's theme.
+    pub desktop_dark: Option<Box<dyn Fn() -> Option<bool>>>,
     /// Adapter names and descriptive labels from the desktop renderer's chosen backends.
     pub graphics_adapters: Vec<(String, String)>,
     /// HTTPS GET for the update check (`update`); None: never check (browser, tests).

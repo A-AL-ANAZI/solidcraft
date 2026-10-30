@@ -22,6 +22,8 @@
 mod app_icon;
 mod come_forward;
 mod control_server;
+#[cfg(target_os = "linux")]
+mod desktop_theme;
 mod device_lost;
 #[cfg(target_os = "windows")]
 mod native_crash;
@@ -422,6 +424,12 @@ fn services(cc: &eframe::CreationContext<'_>, folder: &DialogFolder) -> Services
         graphics_adapters: Vec::new(),
         graphics_path: graphics_path().map(|p| p.to_string_lossy().to_string()),
         window_system: window_system_now(),
+        // Linux: the desktop's dark or light setting, which the window is not told on every
+        // desktop (#7944). Windows and macOS: the window's own theme.
+        #[cfg(target_os = "linux")]
+        desktop_dark: Some(desktop_theme::start(&cc.egui_ctx)),
+        #[cfg(not(target_os = "linux"))]
+        desktop_dark: None,
         http_get: Some(std::sync::Arc::new(http_get)),
         http_download: Some(std::sync::Arc::new(http_download)),
         // Already an installed app: only the browser build offers to install.
