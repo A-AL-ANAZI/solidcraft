@@ -1060,6 +1060,8 @@ preference_settings! {
     navigation_bar: crate::navigation_bar::NavigationBar = Default::default(), PAGE_INTERFACE;
     /// Show command names beneath ribbon icons, independently of workspace layout.
     ribbon_labels: bool = true, PAGE_INTERFACE;
+    /// Show engine-derived persistent selection in the ribbon; off retains neutral buttons.
+    persistent_ribbon_pressed: bool = true, PAGE_INTERFACE => check_id("prefs.persistent_ribbon_pressed");
     /// Keep the SKETCH tab in the ribbon, right after MODEL, while no sketch is open; its drawing
     /// tools then start a sketch first (#7904).
     sketch_tab_always: bool = false, PAGE_INTERFACE => check_id("prefs.sketch_tab_always");
@@ -4954,6 +4956,7 @@ mod tests {
             ("ui_font", json!("test font"), PAGE_INTERFACE),
             ("layout", json!("compact"), PAGE_INTERFACE),
             ("ribbon_labels", json!(false), PAGE_INTERFACE),
+            ("persistent_ribbon_pressed", json!(false), PAGE_INTERFACE),
             ("sketch_tab_always", json!(true), PAGE_INTERFACE),
             ("ribbon_reveal", json!(true), PAGE_INTERFACE),
             ("dialog_buttons", json!("top"), PAGE_INTERFACE),
@@ -6118,6 +6121,42 @@ mod tests {
     }
 
     #[test]
+    fn history_preferences_widget_click_reveals_scrolled_content_and_keeps_folds_closed() {
+        let steps: serde_json::Value = serde_json::from_str(include_str!("../tests/scenarios/history_sketches_under_feature.json")).unwrap();
+        let steps = steps.as_array().unwrap();
+        let transition = steps.iter().position(|step| step["params"]["history_sketches"] == "under_feature").unwrap();
+        let mut h = crate::scenario::Harness::new();
+        for step in steps.iter().take(transition) {
+            h.step(step).unwrap();
+        }
+        h.call("ui.prefs", json!({"open":"Interface"}));
+        let at = h.widget("Under their feature").unwrap();
+        let page = crate::scenario::rect_of("prefs:page_body").unwrap();
+        assert!(!page.contains(egui::pos2(at[0] as f32, at[1] as f32)), "the real control begins scrolled out of view");
+        assert_eq!(h.app.preferences.history_sketches, HistorySketches::InOrder);
+        h.step(&json!({"widget":"Under their feature", "near":"Sketches"})).unwrap();
+        assert_eq!(h.app.preferences.history_sketches, HistorySketches::UnderFeature);
+        let at = h.widget("Under their feature").unwrap();
+        assert!(crate::scenario::rect_of("prefs:page_body").unwrap().contains(egui::pos2(at[0] as f32, at[1] as f32)));
+        assert!(h.app.tree.expanded.is_empty(), "revealing a preference does not open history folds");
+        let page_before = crate::scenario::rect_of("prefs:page_body");
+        h.step(&json!({"widget":"Apply"})).unwrap();
+        assert!(h.app.prefs_window.open);
+        assert_eq!(crate::scenario::rect_of("prefs:page_body"), page_before);
+        h.step(&json!({"widget":"OK"})).unwrap();
+        h.step(&steps[transition + 1]).unwrap();
+        assert!(!h.app.prefs_window.open);
+        for step in steps.iter().skip(transition + 2) {
+            h.step(step).unwrap();
+        }
+        h.call("ui.prefs", json!({"open":"Interface"}));
+        h.step(&json!({"widget":"Navigation"})).unwrap();
+        assert_eq!(h.app.prefs_window.section, PAGE_NAVIGATION, "sidebar navigation remains a real click");
+        h.step(&json!({"widget":"Cancel"})).unwrap();
+        assert!(!h.app.prefs_window.open);
+    }
+
+    #[test]
     fn history_sketches_defaults_in_order_and_follows_preferences_transactions() {
         let old: Prefs = serde_json::from_value(json!({"timeline_left": true})).unwrap();
         assert_eq!(old.history_sketches, HistorySketches::InOrder, "designs and settings from before keep the creation order");
@@ -6263,6 +6302,38 @@ mod tests {
         assert!(std::sync::Arc::ptr_eq(&doc, &app.session.doc));
         assert!(!app.session.is_dirty());
         assert_eq!(app.session.undo.len(), undo);
+    }
+
+    #[test]
+    fn persistent_ribbon_pressed_preference_checkbox_control_persists_cancels_and_resets() {
+        assert!(Prefs::default().persistent_ribbon_pressed);
+        assert!(lenient(&json!({"theme":"light"})).persistent_ribbon_pressed);
+        assert!(lenient(&json!({"persistent_ribbon_pressed":"no"})).persistent_ribbon_pressed);
+        let mut h = crate::scenario::Harness::new();
+        let design = h.app.session.doc.to_json();
+        let revision = h.app.session.revision;
+        h.call("ui.prefs", json!({"open":"Interface"}));
+        super::reveal_preference(&mut h, "prefs:persistent_ribbon_pressed");
+        let checkbox = crate::scenario::handle_at("prefs:persistent_ribbon_pressed").unwrap();
+        h.call("ui.click", json!({"x":checkbox.x,"y":checkbox.y}));
+        assert!(!h.app.preferences.persistent_ribbon_pressed);
+        assert_eq!(h.call("ui.prefs", json!({}))["result"]["persistent_ribbon_pressed"], false);
+        let mut restored = SolveApp::new(Default::default(), Default::default());
+        restored.load_prefs(&h.app.prefs());
+        assert!(!restored.preferences.persistent_ribbon_pressed);
+        h.call("ui.prefs", json!({"button":"cancel"}));
+        assert!(h.app.preferences.persistent_ribbon_pressed);
+        h.call("ui.prefs", json!({"open":"Interface","persistent_ribbon_pressed":false,"button":"apply"}));
+        h.call("ui.prefs", json!({"button":"defaults"}));
+        assert!(h.app.preferences.persistent_ribbon_pressed);
+        h.call("ui.prefs", json!({"button":"cancel"}));
+        assert!(!h.app.preferences.persistent_ribbon_pressed);
+        for malformed in [json!("false"), json!(null), json!(0), json!([])] {
+            assert!(super::set(&mut h.app, &json!({"persistent_ribbon_pressed":malformed})).is_err());
+            assert!(!h.app.preferences.persistent_ribbon_pressed);
+        }
+        assert_eq!(h.app.session.revision, revision);
+        assert_eq!(h.app.session.doc.to_json(), design);
     }
 
     #[test]

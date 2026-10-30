@@ -1415,6 +1415,21 @@ const ELEMENTS: &[Element] = &[
     element!("wide_primary_button", |ui, _| {
         wide_primary_button(ui, "Finish Sketch");
     }),
+    element!("persistent_button_shape", "gallery:persistent_button", Some("gallery:persistent_button"), |ui, _| {
+        let t = Tokens::get();
+        let (rect, response) = ui.allocate_exact_size(vec2(t.form_button_height * 3.0, t.form_button_height * 2.0), egui::Sense::click());
+        ui.painter().add(persistent_button_shape(ui, &response, rect));
+        ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, "Selected", crate::fonts::semibold(t.font_label), t.selected_ink);
+        scenario::publish_target("gallery:persistent_button", rect);
+    }),
+    element!("native_button_focus", "gallery:native_button_focus", Some("gallery:native_button_focus"), |ui, _| {
+        let t = Tokens::get();
+        let (rect, response) = ui.allocate_exact_size(vec2(t.form_button_height * 3.0, t.form_button_height), egui::Sense::click());
+        response.request_focus();
+        ui.painter().rect_filled(rect, t.radius_sm, t.control_fill);
+        ui.painter().add(native_button_focus(ui, &response, rect));
+        scenario::publish_target("gallery:native_button_focus", rect);
+    }),
     element!("button", "dialog:row:Gallery", Some("dialog:button:Gallery:Add"), |ui, _| {
         row(ui, "Gallery", |ui| {
             button(ui, "Add", Button::Normal);
