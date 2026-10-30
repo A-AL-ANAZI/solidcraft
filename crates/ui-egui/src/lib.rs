@@ -658,6 +658,8 @@ pub struct SolveApp {
     styled: bool,
     fitted: bool,
     pending_fit: Option<(Camera, solidcraft_engine::geom::Aabb3, bool)>,
+    /// Frames a pending fit has waited for a layout that can frame it (`resolve_fit`).
+    fit_waits: u32,
     /// The sheet metal flat pattern's own pan and zoom.
     pub flat_view: dialogs_sheet::FlatView,
     /// The start page.
@@ -813,6 +815,7 @@ impl SolveApp {
             styled: false,
             fitted: false,
             pending_fit: None,
+            fit_waits: 0,
             flat_view: Default::default(),
             embedded: false,
             home: home::HomeState::default(),
@@ -2141,6 +2144,9 @@ impl SolveApp {
         self.home.open = false;
         documents::prepare_open(self);
         if let Ok(r) = self.run("doc.open", json!({ "path": path })) {
+            // An opened design comes up at the home view, not at the angle the design before it
+            // was left at: `prepare_open` keeps the camera when it reuses a blank design.
+            self.cam.set_view(StandardView::Iso);
             self.fit_view();
             stand_up::offer(self, path, &[], Some(&r));
         }
@@ -2191,6 +2197,10 @@ impl SolveApp {
         self.fit_view();
     }
 
+    /// How many frames a fit waits for a viewport that can frame it before it gives up (about
+    /// two seconds): a window that never draws its viewport must not ask for frames forever.
+    const FIT_WAITS: u32 = 120;
+
     pub fn fit_view(&mut self) {
         if render_workspace::result_active(self) {
             render_workspace::fit_result(self);
@@ -2213,6 +2223,7 @@ impl SolveApp {
         self.viewport.orbit_free = None;
         let bounds = viewport::view_bounds(self);
         self.pending_fit = Some((self.cam, bounds, false));
+        self.fit_waits = 0;
         self.cam = self.fitted(self.cam);
     }
 
@@ -2221,6 +2232,7 @@ impl SolveApp {
         self.cancel_view_animation();
         self.viewport.orbit_free = None;
         self.pending_fit = Some((self.cam, bounds, false));
+        self.fit_waits = 0;
         self.cam = self.fitted_bounds(self.cam, &bounds);
     }
 
@@ -2236,12 +2248,20 @@ impl SolveApp {
         cam
     }
 
+    /// `cam` framing `bounds` in the viewport as it is laid out now, or `None` when this layout
+    /// can't frame it: the viewport has not been drawn since the fit was asked for, so the
+    /// rectangle to frame into is the one from before the Home screen or a dialog covered it.
+    fn try_fitted_bounds(&self, cam: Camera, bounds: &solidcraft_engine::geom::Aabb3) -> Option<Camera> {
+        let layout = self.viewport.layout.as_ref()?;
+        if render_workspace::active(self) {
+            return viewport_layout::fit_product_bounds(cam, bounds, layout);
+        }
+        viewport_layout::fit_bounds(cam, bounds, layout, self.view_fov())
+    }
+
     fn fitted_bounds(&self, mut cam: Camera, bounds: &solidcraft_engine::geom::Aabb3) -> Camera {
-        if let Some(layout) = &self.viewport.layout {
-            if render_workspace::active(self) {
-                return viewport_layout::fit_product_bounds(cam, bounds, layout).unwrap_or(cam);
-            }
-            return viewport_layout::fit_bounds(cam, bounds, layout, self.view_fov()).unwrap_or(cam);
+        if self.viewport.layout.is_some() {
+            return self.try_fitted_bounds(cam, bounds).unwrap_or(cam);
         }
         // Framed at the angle the view draws with, keeping the camera's own.
         let previous = cam;
@@ -2256,12 +2276,35 @@ impl SolveApp {
         if self.viewport.layout.is_some()
             && let Some((cam, bounds, animate)) = self.pending_fit.take()
         {
-            let to = if bounds.is_empty() { self.fitted(cam) } else { self.fitted_bounds(cam, &bounds) };
+            // Nothing to frame: the camera goes to the empty design's own distance.
+            let want = if bounds.is_empty() { viewport::view_bounds(self) } else { bounds };
+            let to = if want.is_empty() { Some(self.fitted(cam)) } else { self.try_fitted_bounds(cam, &want) };
+            let Some(to) = to else {
+                // The viewport hasn't been drawn since the fit was asked for (the Home screen was
+                // over it, as when a sample or a file is opened from it), so framing it now would
+                // frame it into the rectangle of whatever was there before and leave the design
+                // wherever the camera happened to be. Keep the request and frame it when the
+                // viewport is drawn; give up only if that never comes.
+                if self.fit_waits < Self::FIT_WAITS {
+                    self.fit_waits += 1;
+                    self.pending_fit = Some((cam, bounds, animate));
+                } else {
+                    self.fit_waits = 0;
+                    self.cam = self.fitted_bounds(cam, &want);
+                }
+                ctx.request_repaint();
+                return;
+            };
+            self.fit_waits = 0;
             if animate {
                 self.animate_to(to);
             } else {
                 self.cam = to;
                 self.cam_anim = None;
+                // An open's framing settles here, once the layout is known. An open still meshing
+                // takes this as the camera it framed from the outlines, so the framing it does
+                // when the last body is ready isn't mistaken for the user having moved the view.
+                open_meshing::note_framed(self);
             }
             ctx.request_repaint();
         }

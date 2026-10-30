@@ -10519,11 +10519,15 @@ mod tests {
                 let proj = projection(&h.app, rect);
                 assert!(pick(&h.app, &proj, at).iter().any(|hit| matches!(hit, Hit::Face { .. })), "the drag starts on the box");
                 let pivot = crate::prefs::pivot_under(&h.app, &proj, at);
+                // Near an edge the pick snaps the pivot onto it, a few pixels from the cursor:
+                // the pivot keeps the pixel it was picked on, wherever that is.
+                let start = proj.to_screen(pivot).unwrap();
+                assert!(start.distance(at) < 8.0, "perspective={perspective}: picked under the cursor: {at:?} -> {start:?}");
                 let before = h.app.cam;
                 h.call("ui.drag", json!({"x0":at.x,"y0":at.y,"x1":at.x+150.0,"y1":at.y+60.0,"button":"middle","shift":true,"steps":20}));
                 assert!((h.app.cam.yaw - before.yaw).abs() > 0.5, "the view turned");
                 let after = projection(&h.app, rect).to_screen(pivot).unwrap();
-                assert!(after.distance(at) < 0.5, "perspective={perspective}: {at:?} -> {after:?}");
+                assert!(after.distance(start) < 0.5, "perspective={perspective}: {start:?} -> {after:?}");
             }
         }
     }
