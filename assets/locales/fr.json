@@ -3648,6 +3648,8 @@
   "ui.3d_mouse_section": "Souris 3D",
   "ui.3d_mouse_show_in_view": "Afficher la souris 3D dans la vue 3D",
   "ui.3d_mouse_show_in_view_tip": "Une image de votre souris 3D dans le coin inférieur gauche, qui bouge quand vous la bougez.",
+  "ui.3d_mouse_sketch_orbit": "Faire pivoter les esquisses avec la souris 3D",
+  "ui.3d_mouse_sketch_orbit_tip": "La souris 3D fait aussi pivoter la vue quand une esquisse est ouverte et vue de face, comme la souris. Désactivé : elle déplace et zoome l'esquisse jusqu'à ce que vous incliniez la vue.",
   "ui.3d_mouse_skip": "Mon appareil ne peut pas le faire",
   "ui.3d_mouse_skip_tip": "Ignore ce mouvement dans les deux sens ; la calibration le laisse de côté.",
   "ui.3d_mouse_speed": "Vitesse de la souris 3D",
