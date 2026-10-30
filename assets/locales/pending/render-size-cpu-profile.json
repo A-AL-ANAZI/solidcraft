@@ -1,0 +1,42 @@
+{
+  "en": {
+    "render.output_size_profile": "To render {width} × {height}, choose the {profile} CPU resource profile, or a smaller size.",
+    "render.size_needs_profile": "{size} · needs {profile}",
+    "render.output_size_method_profile": "To render {width} × {height}, choose {method} with the {profile} CPU resource profile, or a smaller size."
+  },
+  "ar": {
+    "render.output_size_profile": "لعرض {width} × {height}، اختر ملف موارد CPU «{profile}» أو حجمًا أصغر.",
+    "render.size_needs_profile": "{size} · يتطلب «{profile}»",
+    "render.output_size_method_profile": "لعرض {width} × {height}، اختر {method} مع ملف موارد CPU «{profile}» أو حجمًا أصغر."
+  },
+  "de": {
+    "render.output_size_profile": "Für {width} × {height} das CPU-Ressourcenprofil {profile} wählen oder eine kleinere Größe.",
+    "render.size_needs_profile": "{size} · erfordert {profile}",
+    "render.output_size_method_profile": "Für {width} × {height} {method} mit dem CPU-Ressourcenprofil {profile} wählen oder eine kleinere Größe."
+  },
+  "he": {
+    "render.output_size_profile": "כדי לרנדר {width} × {height}, יש לבחור בפרופיל משאבי CPU {profile} או בגודל קטן יותר.",
+    "render.size_needs_profile": "{size} · נדרש {profile}",
+    "render.output_size_method_profile": "כדי לרנדר {width} × {height}, יש לבחור ב-{method} עם פרופיל משאבי CPU {profile} או בגודל קטן יותר."
+  },
+  "ja": {
+    "render.output_size_profile": "{width} × {height} をレンダリングするには、CPUリソースプロファイル「{profile}」を選ぶか、より小さいサイズを選んでください。",
+    "render.size_needs_profile": "{size}・「{profile}」が必要",
+    "render.output_size_method_profile": "{width} × {height} をレンダリングするには、{method} と CPUリソースプロファイル「{profile}」を選ぶか、より小さいサイズを選んでください。"
+  },
+  "ko": {
+    "render.output_size_profile": "{width} × {height}을(를) 렌더링하려면 {profile} CPU 리소스 프로필이나 더 작은 크기를 선택하세요.",
+    "render.size_needs_profile": "{size} · {profile} 필요",
+    "render.output_size_method_profile": "{width} × {height}을(를) 렌더링하려면 {method}와(과) {profile} CPU 리소스 프로필을 선택하거나 더 작은 크기를 선택하세요."
+  },
+  "vi": {
+    "render.output_size_profile": "Để kết xuất {width} × {height}, hãy chọn cấu hình tài nguyên CPU {profile} hoặc một kích thước nhỏ hơn.",
+    "render.size_needs_profile": "{size} · cần {profile}",
+    "render.output_size_method_profile": "Để kết xuất {width} × {height}, hãy chọn {method} với cấu hình tài nguyên CPU {profile} hoặc một kích thước nhỏ hơn."
+  },
+  "zh": {
+    "render.output_size_profile": "要渲染 {width} × {height}，请选择“{profile}”CPU 资源配置，或选择更小的尺寸。",
+    "render.size_needs_profile": "{size} · 需要“{profile}”",
+    "render.output_size_method_profile": "要渲染 {width} × {height}，请选择 {method} 和“{profile}”CPU 资源配置，或选择更小的尺寸。"
+  }
+}
