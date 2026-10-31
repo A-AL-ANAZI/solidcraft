@@ -423,8 +423,13 @@ fn analysis(i: TOut, k: f32) -> vec4<f32> {
         let r = reflect(-v, n);
         var side = cross(v, vec3<f32>(0.0, 0.0, 1.0));
         if (length(side) < 1e-3) { side = vec3<f32>(1.0, 0.0, 0.0); }
-        let s = sin(dot(r, normalize(side)) * u.ana.y * 3.14159265);
-        let c = select(0.08, 0.95, s > 0.0);
+        let x = dot(r, normalize(side));
+        let s = sin(x * u.ana.y * 3.14159265);
+        // A face whose normal lies in the upright plane through the view (every horizontal
+        // face) reflects straight ahead: its sideways part is zero, on the edge between a black
+        // and a white stripe, and rounding picked one or the other from frame to frame while
+        // the view turned (#2153). Straight ahead is white.
+        let c = select(0.08, 0.95, s > 0.0 || abs(x) < 1e-4);
         return out_color(vec4<f32>(vec3<f32>(c), 1.0));
     }
     if (u.ana.x > 4.5) {
