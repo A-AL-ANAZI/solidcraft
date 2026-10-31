@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 use solidcraft_engine::Sel;
 use solidcraft_engine::Session;
 use solidcraft_engine::doc::expr::Kind as ValueKind;
-use solidcraft_engine::doc::joints::JointKind;
+use solidcraft_engine::doc::joints::{JointKind, JointOrigin, Snap};
 use solidcraft_engine::geom::{Aabb3, Mesh, Vec3};
 
 use crate::SolveApp;
@@ -137,9 +137,15 @@ pub struct JointForm {
     /// Editing this joint (its origins stay; type, alignment and limits change).
     pub editing: Option<u64>,
     pub kind: usize,
+    /// Edit Joint: the sides as the dialog opened on them. A side still that pick is not sent,
+    /// so it keeps its origin exactly.
+    pub sides: [Option<Sel>; 2],
     /// Flip B relative to the mate (faces apart instead of together).
     pub flip: bool,
     pub angle: String,
+    /// Edit Joint: the angle as the dialog opened on it. Sent only when changed, so a side moved
+    /// without it turns B as joint.create would.
+    pub angle_shown: String,
     pub offset: [String; 3],
     /// Per joint value: limited, minimum, maximum.
     pub limits: Vec<(bool, String, String)>,
@@ -155,8 +161,10 @@ impl JointForm {
             as_built,
             editing: None,
             kind: 0,
+            sides: [None, None],
             flip: false,
             angle: "0 deg".into(),
+            angle_shown: "0 deg".into(),
             offset: std::array::from_fn(|_| crate::length_input::default(doc, "0")),
             limits: Vec::new(),
             animate: false,
@@ -217,10 +225,7 @@ pub fn start(app: &SolveApp, id: &str) -> Option<(Kind, Vec<SelInput>)> {
     let s = &app.session;
     let (asm, inputs) = match id {
         "component.create" => (Asm::NewComponent { name: String::new(), activate: true }, vec![SelInput::new("Bodies (optional)", BODIES, true)]),
-        "joint.create" => (
-            Asm::Joint(Box::new(JointForm::new(false, &app.session.doc))),
-            vec![SelInput::new("Component 1", SNAPS, false), SelInput::new("Component 2", SNAPS, false)],
-        ),
+        "joint.create" => (Asm::Joint(Box::new(JointForm::new(false, &app.session.doc))), side_inputs()),
         "joint.as_built" => (
             Asm::Joint(Box::new(JointForm::new(true, &app.session.doc))),
             vec![SelInput::new("Components", BODIES, true), SelInput::new("Position", SNAPS, false)],
@@ -321,16 +326,121 @@ pub(crate) fn num(v: f64, unit: &str) -> String {
     format!("{} {unit}", crate::dialogs_coupling::trim(v))
 }
 
-/// The Edit Joint dialog for a joint (by id).
+/// The two side inputs of the Joint dialog (Joint and Edit Joint): the picks of each origin.
+fn side_inputs() -> Vec<SelInput> {
+    vec![SelInput::new("Component 1", SNAPS, false), SelInput::new("Component 2", SNAPS, false)]
+}
+
+/// The pick a joint side shows in the side inputs: the face or edge of its own occurrence that
+/// the side's snap names (the piece nearest its pick, when the name has several), else the face
+/// or edge nearest the pick. A point or frame side names no face: None.
+fn side_pick(app: &SolveApp, o: &JointOrigin) -> Option<Sel> {
+    let s = &app.session;
+    let (pick, face, edge) = match &o.snap {
+        Snap::FaceCenter { pick, face, .. } | Snap::CircleCenter { pick, face, .. } => (*pick, face.as_deref(), None),
+        Snap::Edge { pick, edge, .. } => (*pick, None, edge.as_deref()),
+        Snap::Point { .. } | Snap::Frame { .. } => return None,
+    };
+    // The pick is in the component's coordinates; the placed bodies are in the world.
+    let at =
+        if o.occurrence == 0 { solidcraft_engine::doc::IDENTITY } else { solidcraft_engine::doc::joints::occurrence_world(&s.doc, o.occurrence) };
+    let p = solidcraft_engine::doc::apply_point(&at, pick);
+    let st = s.world_state();
+    let own: Vec<&solidcraft_engine::doc::ModelBody> = st.bodies.iter().filter(|b| occurrence_of_body(s, &b.name) == Some(o.occurrence)).collect();
+    let named = match (face, edge) {
+        (Some(name), _) => own.iter().filter_map(|b| named_face(b, name, p)).min_by(|a, b| a.0.total_cmp(&b.0)),
+        (None, Some(name)) => own.iter().filter_map(|b| named_edge(b, name, p)).min_by(|a, b| a.0.total_cmp(&b.0)),
+        (None, None) => None,
+    };
+    named.map(|(_, sel)| sel).or_else(|| nearest_pick(&own, p, matches!(o.snap, Snap::Edge { .. })))
+}
+
+/// The distance from `p` to the face `f` of `m`, measured to its triangles.
+fn face_dist(m: &Mesh, f: usize, p: Vec3) -> Option<f64> {
+    m.triangles
+        .iter()
+        .zip(&m.tri_face)
+        .filter(|(_, tf)| **tf as usize == f)
+        .filter_map(|(t, _)| m.tri(t))
+        .map(|[a, c, e]| crate::preview::point_triangle_dist(p, a, c, e))
+        .reduce(f64::min)
+}
+
+/// The distance from `p` to the mesh edge `i` of `m`.
+fn edge_dist(m: &Mesh, i: usize, p: Vec3) -> Option<f64> {
+    m.edges.get(i)?.windows(2).map(|w| p.dist_to_segment(w[0], w[1])).reduce(f64::min)
+}
+
+/// The face of `b` the name `name` names, the piece nearest `p` when it has several.
+fn named_face(b: &solidcraft_engine::doc::ModelBody, name: &str, p: Vec3) -> Option<(f64, Sel)> {
+    let m = b.mesh();
+    let names = solidcraft_engine::doc::naming::face_names(b);
+    names
+        .iter()
+        .enumerate()
+        .filter(|(_, n)| n.as_str() == name)
+        .filter_map(|(f, _)| face_dist(&m, f, p).map(|d| (d, Sel::Face { body: b.name.clone(), index: f, point: p })))
+        .min_by(|a, b| a.0.total_cmp(&b.0))
+}
+
+/// The edge of `b` the name `name` names (a split edge: the piece nearest `p`).
+fn named_edge(b: &solidcraft_engine::doc::ModelBody, name: &str, p: Vec3) -> Option<(f64, Sel)> {
+    let m = b.mesh();
+    let names = solidcraft_engine::doc::naming::edge_names(b);
+    let index = match names.iter().position(|n| n == name) {
+        Some(i) => i,
+        None => {
+            let (at, _) = solidcraft_engine::doc::naming::find_edge(b, name, p).ok()?;
+            (0..m.edges.len())
+                .min_by(|x, y| edge_dist(&m, *x, at).unwrap_or(f64::INFINITY).total_cmp(&edge_dist(&m, *y, at).unwrap_or(f64::INFINITY)))?
+        }
+    };
+    let d = edge_dist(&m, index, p)?;
+    Some((d, Sel::Edge { body: b.name.clone(), index, point: p }))
+}
+
+/// The face (or edge) of the bodies `own` nearest `p`.
+fn nearest_pick(own: &[&solidcraft_engine::doc::ModelBody], p: Vec3, edges: bool) -> Option<Sel> {
+    let mut best: Option<(f64, Sel)> = None;
+    for b in own {
+        let m = b.mesh();
+        if edges {
+            for i in 0..m.edges.len() {
+                let Some(d) = edge_dist(&m, i, p) else { continue };
+                if best.as_ref().is_none_or(|(bd, _)| d < *bd) {
+                    best = Some((d, Sel::Edge { body: b.name.clone(), index: i, point: p }));
+                }
+            }
+        } else {
+            for (t, f) in m.triangles.iter().zip(&m.tri_face) {
+                let Some([a, c, e]) = m.tri(t) else { continue };
+                let d = crate::preview::point_triangle_dist(p, a, c, e);
+                if best.as_ref().is_none_or(|(bd, _)| d < *bd) {
+                    best = Some((d, Sel::Face { body: b.name.clone(), index: *f as usize, point: p }));
+                }
+            }
+        }
+    }
+    best.map(|(_, sel)| sel)
+}
+
+/// The Edit Joint dialog for a joint (by id). Its two sides show as the Joint dialog's do, each
+/// pre-filled with the pick it sits on.
 pub fn edit_joint(app: &SolveApp, id: u64) -> Option<Dialog> {
     let j = app.session.doc.assembly.joints.iter().find(|j| j.id == id)?;
     let mut f = JointForm::new(false, &app.session.doc);
     f.editing = Some(id);
+    f.sides = [side_pick(app, &j.a), side_pick(app, &j.b)];
+    let mut inputs = side_inputs();
+    for (input, pick) in inputs.iter_mut().zip(&f.sides) {
+        input.items = pick.iter().cloned().collect();
+    }
     f.kind = TYPES.iter().position(|t| JointKind::parse(t) == Some(j.kind)).unwrap_or(0);
     f.flip = j.flip;
     // An offset or angle typed as an expression shows (and is sent back) as that expression, so
     // the joint keeps following its parameters.
     f.angle = j.exprs.angle.clone().unwrap_or_else(|| num(j.angle.to_degrees(), "deg"));
+    f.angle_shown = f.angle.clone();
     f.offset[2] = j.exprs.offset.clone().unwrap_or_else(|| crate::length_input::model(&app.session.doc, j.offset));
     f.fit_limits(&app.session.doc);
     for (i, l) in f.limits.iter_mut().enumerate() {
@@ -339,7 +449,7 @@ pub fn edit_joint(app: &SolveApp, id: u64) -> Option<Dialog> {
             *l = (true, fmt(*lo), fmt(*hi));
         }
     }
-    Some(Dialog::new(Kind::Assembly(Asm::Joint(Box::new(f))), vec![]))
+    Some(Dialog::new(Kind::Assembly(Asm::Joint(Box::new(f))), inputs))
 }
 
 /// The Drive Joints dialog on a joint (by id).
@@ -970,7 +1080,20 @@ pub fn commands(app: &SolveApp, k: &Asm, inputs: &[SelInput]) -> Result<Vec<(Str
             let limits: Vec<Value> =
                 f.limits.iter().take(jk.dofs().len()).map(|(on, lo, hi)| if *on { json!([lo, hi]) } else { Value::Null }).collect();
             if let Some(id) = f.editing {
-                let mut out = cmd("joint.edit", json!({"joint": id, "type": kind, "flip": f.flip, "offset": f.offset[2], "angle": f.angle}));
+                let mut p = json!({"joint": id, "type": kind, "flip": f.flip, "offset": f.offset[2]});
+                // The angle only when the user changed it: a side moved without it turns B as joint.create would.
+                if f.angle != f.angle_shown {
+                    p["angle"] = json!(f.angle);
+                }
+                // A side picked again moves the joint's attachment there; one left as it was keeps its origin.
+                for (i, key) in ["a", "b"].into_iter().enumerate() {
+                    let picked = sel_items(inputs, i).first();
+                    if picked != f.sides[i].as_ref() {
+                        let what = if i == 0 { "component 1's joint origin" } else { "component 2's joint origin" };
+                        p[key] = snap(i, what)?.param;
+                    }
+                }
+                let mut out = cmd("joint.edit", p);
                 for (i, l) in limits.iter().enumerate() {
                     let p = match l.as_array() {
                         Some(a) => json!({"joint": id, "index": i, "min": a.first(), "max": a.get(1)}),
