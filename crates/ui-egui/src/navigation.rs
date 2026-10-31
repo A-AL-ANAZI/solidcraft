@@ -830,9 +830,17 @@ pub(crate) fn handle(app: &mut SolveApp, ui: &mut egui::Ui, rect: Rect, resp: &e
         if pressed || key || dragging || motion.is_some() || !caps.orbit {
             app.viewport.spin = false;
         } else {
-            orbit_camera(app, f64::from(dt.min(0.1)) * 30.0, 0.0);
+            let pivot = spin_pivot(app, rect);
+            let dx = f64::from(dt.min(0.1)) * 30.0;
+            match pivot {
+                Some(p) => orbit_about(app, rect, dx, 0.0, p),
+                None => orbit_camera(app, dx, 0.0),
+            }
             ui.ctx().request_repaint();
         }
+    }
+    if !app.viewport.spin {
+        app.viewport.spin_pivot = None;
     }
     if !app.cam.is_valid() {
         app.viewport.orbit_free = None;
@@ -1142,6 +1150,25 @@ pub fn orbit(app: &mut SolveApp, rect: egui::Rect, dx: f64, dy: f64, press: Opti
         None => app.cam.orbit(dx, dy),
     }
     app.viewport.orbit_from = Some(OrbitFrom { dx, dy, last: app.cam, ..from });
+}
+
+/// What continuous orbit turns about, by Orbit around: the view's centre (none), the world origin,
+/// or around the cursor the model point in the middle of the view (else the middle of the bodies
+/// in view), chosen once when the spin starts. Turning about the view's centre instead let the
+/// model swing out of view once earlier cursor orbits had left that centre off the model (#1044).
+fn spin_pivot(app: &mut SolveApp, rect: Rect) -> Option<Vec3> {
+    match app.preferences.orbit_around {
+        OrbitAround::ViewCentre => None,
+        OrbitAround::Origin => Some(Vec3::ZERO),
+        OrbitAround::Cursor => Some(match app.viewport.spin_pivot {
+            Some(p) => p,
+            None => {
+                let p = pivot_under(app, &projection(app, rect), rect.center());
+                app.viewport.spin_pivot = Some(p);
+                p
+            }
+        }),
+    }
 }
 
 /// An orbit drag so far: the camera it began with, the pointer's total motion since, the pivot
@@ -1887,6 +1914,76 @@ mod tests {
             distances.push(app.cam.distance);
         }
         assert!(distances.windows(2).all(|pair| pair[0] == pair[1]));
+    }
+
+    /// Continuous orbit turns about what Orbit around names (#1044): around the cursor, the model
+    /// point in the middle of the view stays still on screen for the whole spin, even when the
+    /// view's centre has been left far behind the model; around the view's centre, as before.
+    #[test]
+    fn continuous_orbit_turns_about_the_orbit_around_point() {
+        use crate::prefs::OrbitAround;
+        for fov in [0.0, 0.6] {
+            for around in [OrbitAround::Cursor, OrbitAround::Origin, OrbitAround::ViewCentre] {
+                let mut s = solidcraft_engine::Session::default();
+                s.execute("solid.box", &serde_json::json!({"length":40,"width":30,"height":20})).unwrap();
+                let mut app = crate::SolveApp::new(s, crate::Services::default());
+                app.preferences.orbit_around = around;
+                app.cam.fov = fov;
+                let ctx = crate::fonts::test_context();
+                let mut time = 0.0;
+                let mut frame = |app: &mut crate::SolveApp| {
+                    time += 1.0 / 60.0;
+                    let raw = egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 600.0))),
+                        time: Some(time),
+                        focused: true,
+                        ..Default::default()
+                    };
+                    let mut out = ctx.run_ui(raw, |ui| {
+                        let rect = ui.max_rect();
+                        app.viewport.rect = Some(rect);
+                        let resp = ui.interact(rect, ui.id().with("spin"), egui::Sense::click_and_drag());
+                        super::handle(app, ui, rect, &resp, super::NavCaps::MODEL);
+                    });
+                    out.textures_delta.clear();
+                };
+                frame(&mut app);
+                app.fit_view();
+                // Earlier cursor orbits leave the view's centre far behind the model, which still
+                // shows in the middle of the view.
+                let back = app.cam.basis().2;
+                app.cam.target -= back * 300.0;
+                app.cam.distance += 300.0;
+                let rect = app.viewport.rect.unwrap();
+                let held = match around {
+                    OrbitAround::Cursor => crate::prefs::pivot_under(&app, &super::projection(&app, rect), rect.center()),
+                    OrbitAround::Origin => super::Vec3::ZERO,
+                    OrbitAround::ViewCentre => app.cam.target,
+                };
+                let start = super::projection(&app, rect).to_screen(held).unwrap();
+                let (yaw, target) = (app.cam.yaw, app.cam.target);
+                app.viewport.spin = true;
+                for i in 0..90 {
+                    frame(&mut app);
+                    assert!(app.viewport.spin, "{around:?}: nothing stopped the spin");
+                    let now = super::projection(&app, rect).to_screen(held).unwrap();
+                    assert!(now.distance(start) < 0.5, "fov {fov} {around:?}, frame {i}: the held point moved {start:?} -> {now:?}");
+                }
+                assert!((app.cam.yaw - yaw).abs() > 0.1, "{around:?}: the view turned");
+                match around {
+                    OrbitAround::Cursor => {
+                        assert_eq!(app.viewport.spin_pivot, Some(held), "the point is chosen once");
+                        let middle = crate::prefs::pivot_under(&app, &super::projection(&app, rect), rect.center());
+                        assert!(middle.dist(held) < 30.0, "fov {fov}: the model is still in the middle: {middle:?} vs {held:?}");
+                    }
+                    OrbitAround::ViewCentre => assert!((app.cam.target - target).len() < 1e-9, "the view's centre stays as before"),
+                    OrbitAround::Origin => assert!(app.viewport.spin_pivot.is_none()),
+                }
+                app.viewport.spin = false;
+                frame(&mut app);
+                assert!(app.viewport.spin_pivot.is_none(), "a stopped spin forgets its point");
+            }
+        }
     }
 
     /// A flat page (orbit off) pans and zooms with the same bindings and never turns the view.
