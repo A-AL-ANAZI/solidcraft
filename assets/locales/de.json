@@ -2103,6 +2103,8 @@
   "prefs.sketch_tab_always_note": "Die Registerkarte Skizze bleibt im Menüband direkt nach Modell, auch wenn keine Skizze offen ist. Ihre Zeichenwerkzeuge beginnen dann eine Skizze auf der ausgewählten Ebene oder Fläche oder auf der Ebene, die Sie als Nächstes wählen, und das Werkzeug ist darin bereit.",
   "prefs.sketch_tracking_guides": "Ausrichtungshilfen für Mittelpunkte",
   "prefs.sketch_tracking_guides_note": "Den Mauszeiger über einen Kreismittelpunkt oder eine Kantenmitte bewegen und dann waagerecht oder senkrecht bewegen, um eine temporäre gepunktete Hilfslinie anzuzeigen.",
+  "prefs.sketch_tracking_points": "Ausrichtungshilfen von Endpunkten und Ecken beim Zeichnen",
+  "prefs.sketch_tracking_points_note": "Während ein Zeichenwerkzeug auf einen Punkt wartet, zeigt das Überfahren eines Linien- oder Bogenendes, einer Rechteckecke oder eines freien Punkts dieselbe temporäre gepunktete Hilfslinie wie ein Mittelpunkt. Aus: nur Mittelpunkte.",
   "prefs.sketching": "Skizzieren",
   "prefs.snap_drawing_note": "Gilt beim Zeichnen oder Verschieben eines Skizzenpunkts.",
   "prefs.source": "Quelle",

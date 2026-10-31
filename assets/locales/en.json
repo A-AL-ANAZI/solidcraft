@@ -2105,6 +2105,8 @@
   "prefs.sketch_tab_always_note": "The Sketch tab stays in the ribbon, right after Model, while no sketch is open. Its drawing tools then start a sketch on the selected plane or face, or on the plane you pick next, with the tool ready in it.",
   "prefs.sketch_tracking_guides": "Center and midpoint alignment guides",
   "prefs.sketch_tracking_guides_note": "Hover over a circle center or straight-edge midpoint, then move horizontally or vertically to show a temporary dotted guide.",
+  "prefs.sketch_tracking_points": "Alignment guides from end points and corners while drawing",
+  "prefs.sketch_tracking_points_note": "While a drawing tool waits for a point, hovering a line or arc end, a rectangle corner or a free point shows the same temporary dotted guide as a center or midpoint. Off: only centers and midpoints.",
   "prefs.sketching": "Sketching",
   "prefs.snap_drawing_note": "While drawing or dragging a sketch point.",
   "prefs.source": "Source",

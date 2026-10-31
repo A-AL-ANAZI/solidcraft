@@ -1666,6 +1666,8 @@
   "prefs.sketch_tab_always_note": "스케치가 열려 있지 않을 때도 스케치 탭이 리본에서 모델 바로 다음에 남아 있습니다. 그 그리기 도구는 선택한 평면이나 면, 또는 다음에 고르는 평면에서 스케치를 시작하고 그 안에서 도구를 바로 쓸 수 있게 합니다.",
   "prefs.sketch_tracking_guides": "중심 및 중점 정렬 안내선",
   "prefs.sketch_tracking_guides_note": "원 중심이나 직선 모서리의 중점에 마우스를 올린 다음 수평 또는 수직으로 이동하면 임시 점선 안내선이 표시됩니다.",
+  "prefs.sketch_tracking_points": "그리는 동안 끝점과 모서리에서도 정렬 안내선",
+  "prefs.sketch_tracking_points_note": "그리기 도구가 점을 기다리는 동안 선이나 호의 끝점, 직사각형 모서리, 자유 점에 마우스를 올리면 중심이나 중점과 같은 임시 점선 안내선이 표시됩니다. 끄면: 중심과 중점만.",
   "prefs.sketching": "스케치",
   "prefs.snap_drawing_note": "스케치 점을 그리거나 드래그하는 동안.",
   "prefs.source": "소스",

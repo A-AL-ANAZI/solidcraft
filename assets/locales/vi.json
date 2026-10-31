@@ -2105,6 +2105,8 @@
   "prefs.sketch_tab_always_note": "Thẻ Bản phác vẫn nằm trên thanh công cụ, ngay sau Mô hình, khi không có bản phác nào đang mở. Khi đó các công cụ vẽ của nó bắt đầu một bản phác trên mặt phẳng hoặc mặt đã chọn, hoặc trên mặt phẳng bạn chọn tiếp theo, với công cụ sẵn sàng trong đó.",
   "prefs.sketch_tracking_guides": "Đường căn chỉnh tâm và trung điểm",
   "prefs.sketch_tracking_guides_note": "Di con trỏ lên tâm đường tròn hoặc trung điểm của cạnh thẳng, rồi di chuyển theo phương ngang hoặc dọc để hiển thị đường căn chỉnh nét đứt tạm thời.",
+  "prefs.sketch_tracking_points": "Đường căn chỉnh từ điểm đầu mút và góc khi vẽ",
+  "prefs.sketch_tracking_points_note": "Khi một công cụ vẽ đang chờ một điểm, di con trỏ lên đầu mút của đường thẳng hoặc cung, góc của hình chữ nhật hoặc một điểm tự do sẽ hiển thị đường căn chỉnh nét đứt tạm thời giống như ở tâm hoặc trung điểm. Tắt: chỉ tâm và trung điểm.",
   "prefs.sketching": "Vẽ phác thảo",
   "prefs.snap_drawing_note": "Khi đang vẽ hoặc kéo một điểm phác thảo.",
   "prefs.source": "Nguồn",

@@ -2048,6 +2048,8 @@
   "prefs.sketch_tab_always_note": "La pestaña Boceto permanece en la cinta, tras Modelo, mientras no haya ningún boceto abierto. Sus herramientas de dibujo inician un boceto en el plano o cara seleccionados, o en el que elijas a continuación, con la herramienta lista.",
   "prefs.sketch_tracking_guides": "Guías de alineación a centro y punto medio",
   "prefs.sketch_tracking_guides_note": "Al pasar el ratón por el centro de un círculo o el punto medio de un borde recto, muévete horizontal o verticalmente para mostrar una guía punteada temporal.",
+  "prefs.sketch_tracking_points": "Guías de alineación desde extremos y esquinas al dibujar",
+  "prefs.sketch_tracking_points_note": "Mientras una herramienta de dibujo espera un punto, al pasar el ratón por el extremo de una línea o un arco, la esquina de un rectángulo o un punto libre se muestra la misma guía punteada temporal que en un centro o punto medio. Desactivado: solo centros y puntos medios.",
   "prefs.sketching": "Bocetos",
   "prefs.snap_drawing_note": "Mientras dibujas o arrastras un punto del boceto.",
   "prefs.source": "Origen",

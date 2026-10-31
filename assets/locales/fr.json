@@ -2041,6 +2041,8 @@
   "prefs.sketch_tab_always_note": "L'onglet Esquisse reste dans le ruban, juste après Modèle, tant qu'aucune esquisse n'est ouverte. Ses outils de dessin démarrent alors une esquisse sur le plan ou la face sélectionnés, ou sur le plan que vous choisissez ensuite, avec l'outil prêt à l'emploi.",
   "prefs.sketch_tracking_guides": "Guides d'alignement sur le centre et le point milieu",
   "prefs.sketch_tracking_guides_note": "Survolez le centre d'un cercle ou le point milieu d'un segment droit, puis déplacez le pointeur horizontalement ou verticalement pour afficher un guide pointillé temporaire.",
+  "prefs.sketch_tracking_points": "Guides d'alignement depuis les extrémités et les coins pendant le dessin",
+  "prefs.sketch_tracking_points_note": "Quand un outil de dessin attend un point, survoler l'extrémité d'une ligne ou d'un arc, le coin d'un rectangle ou un point libre affiche le même guide pointillé temporaire qu'un centre ou un point milieu. Désactivé : seulement les centres et les points milieux.",
   "prefs.sketching": "Esquisse",
   "prefs.snap_drawing_note": "Pendant le dessin ou le déplacement d'un point d'esquisse.",
   "prefs.source": "Source",
