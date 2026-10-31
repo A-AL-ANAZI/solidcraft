@@ -4,8 +4,24 @@
 `Surface::ViewportStatus`. Callers supply translated names, formatted settings,
 kind, stable identity and key availability, and dispatch returned clear/edit actions.
 The row keeps supplied order and anchors to the top centre of the free viewport.
-Its presentation state only remembers which key card is open. The `ui.status_fixture`
+Its presentation state remembers only open cards, focus, scroll and the selected diagnostic
+record, scoped to the current document. The `ui.status_fixture`
 control method provides named specimens for UI scenarios and live visual review.
+
+`details` renders a `Details` description in the shared host: optional caption, live settings,
+key, findings or readout, then at most two text actions. Tools supply data and handle
+`DetailEvent` requests through their normal commands. The caption and actions stay fixed
+around a body bounded to 60% of the free viewport height. Findings/readouts preview six rows;
+Show all expands the same scrolling body. `patterned_swatch` supports an optional second
+semantic colour, so a grouped key can honestly represent both existing scene colours.
+
+`viewport_status_details` defaults to live cards. Its false value restores read-only keys
+and the Section dialog independently of the analysis/Section HUD and Summary preferences.
+Continuity edits explicitly select one retained body/edge record; its own successful limits
+and sample count accompany every live command. Stale geometry disables editing and targets.
+`view.status_details` reads current effect settings/capabilities and the retained per-seam
+diagnostics without preparing or evaluating geometry. `details_findings` and
+`details_readout` fixture presets are labelled component specimens, not production results.
 
 | Component | Use |
 | --- | --- |

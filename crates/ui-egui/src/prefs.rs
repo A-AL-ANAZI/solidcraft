@@ -1081,6 +1081,7 @@ preference_settings! {
     persistent_ribbon_pressed: bool = true, PAGE_INTERFACE => check_id("prefs.persistent_ribbon_pressed");
     viewport_analysis_status: bool = true, PAGE_INTERFACE => check_id("prefs.viewport_analysis_status");
     viewport_section_status: bool = true, PAGE_INTERFACE => check_id("prefs.viewport_section_status");
+    viewport_status_details: bool = true, PAGE_INTERFACE => check_id("prefs.viewport_status_details");
     viewport_status_summary: bool = true, PAGE_INTERFACE => check_id("prefs.viewport_status_summary");
     /// Keep the SKETCH tab in the ribbon, right after MODEL, while no sketch is open; its drawing
     /// tools then start a sketch first (#7904).
@@ -5047,6 +5048,7 @@ mod tests {
             ("persistent_ribbon_pressed", json!(false), PAGE_INTERFACE),
             ("viewport_analysis_status", json!(false), PAGE_INTERFACE),
             ("viewport_section_status", json!(false), PAGE_INTERFACE),
+            ("viewport_status_details", json!(false), PAGE_INTERFACE),
             ("viewport_status_summary", json!(false), PAGE_INTERFACE),
             ("sketch_tab_always", json!(true), PAGE_INTERFACE),
             ("ribbon_reveal", json!(true), PAGE_INTERFACE),
@@ -6611,6 +6613,38 @@ mod tests {
         for malformed in [json!("false"), json!(null), json!(0), json!([])] {
             assert!(super::set(&mut h.app, &json!({"viewport_section_status":malformed})).is_err());
             assert!(!h.app.preferences.viewport_section_status);
+        }
+        assert_eq!(h.app.session.revision, revision);
+        assert_eq!(h.app.session.doc.to_json(), design);
+    }
+
+    #[test]
+    fn viewport_status_details_preference_checkbox_control_persists_cancels_and_resets() {
+        assert!(Prefs::default().viewport_status_details);
+        assert!(lenient(&json!({"theme":"light"})).viewport_status_details);
+        assert!(lenient(&json!({"viewport_status_details":"no"})).viewport_status_details);
+        let mut h = crate::scenario::Harness::new();
+        let design = h.app.session.doc.to_json();
+        let revision = h.app.session.revision;
+        h.call("ui.prefs", json!({"open":"Interface"}));
+        super::reveal_preference(&mut h, "prefs:viewport_status_details");
+        let checkbox = crate::scenario::handle_at("prefs:viewport_status_details").unwrap();
+        h.call("ui.click", json!({"x":checkbox.x,"y":checkbox.y}));
+        assert!(!h.app.preferences.viewport_status_details);
+        assert_eq!(h.call("ui.prefs", json!({}))["result"]["viewport_status_details"], false);
+        let mut restored = SolveApp::new(Default::default(), Default::default());
+        restored.load_prefs(&h.app.prefs());
+        assert!(!restored.preferences.viewport_status_details);
+        h.call("ui.prefs", json!({"button":"cancel"}));
+        assert!(h.app.preferences.viewport_status_details);
+        h.call("ui.prefs", json!({"open":"Interface","viewport_status_details":false,"button":"apply"}));
+        h.call("ui.prefs", json!({"button":"defaults"}));
+        assert!(h.app.preferences.viewport_status_details);
+        h.call("ui.prefs", json!({"button":"cancel"}));
+        assert!(!h.app.preferences.viewport_status_details);
+        for malformed in [json!("false"), json!(null), json!(0), json!([])] {
+            assert!(super::set(&mut h.app, &json!({"viewport_status_details":malformed})).is_err());
+            assert!(!h.app.preferences.viewport_status_details);
         }
         assert_eq!(h.app.session.revision, revision);
         assert_eq!(h.app.session.doc.to_json(), design);

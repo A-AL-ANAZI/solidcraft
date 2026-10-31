@@ -17,6 +17,13 @@ as `toast:<name>:close`: `toast:status:close`, `toast:space_mouse_offer:close` a
 `toast:stand_up:close` (#7971). Those that go by themselves draw a thin ring around it that
 shrinks over their time; the ring is full again while the pointer is on a toast that waits for it.
 
+Live details publish `details:field:<id>`, `details:show_all` and `details:action:copy`
+handles. `details_findings` and `details_readout` are explicitly labelled component-only
+`ui.status_fixture` presets. Real card settings execute the normal analysis/Section commands;
+agents can read the same structured settings and retained Continuity records with the pure
+`view.status_details` engine command. Its `current` flag guards geometry targets, and its
+per-record limits prevent mixed measurements from being mistaken for one global tolerance.
+
 The control channel is **on by default**. SolidCraft listens on `127.0.0.1` only, for JSON lines,
 so agents can drive the app without a launch flag. Every connection still needs this launch's
 token (below); nothing else on the machine, and nothing off it, can send a command.

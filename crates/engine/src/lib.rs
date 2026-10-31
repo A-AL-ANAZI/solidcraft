@@ -33,6 +33,7 @@ pub mod slicer_files;
 mod slicer_icon;
 pub mod slicers;
 pub mod snap;
+pub mod status_details;
 pub mod status_items;
 pub mod timing;
 pub mod view;
@@ -593,6 +594,8 @@ pub struct ContinuitySeam {
     pub points: Vec<Vec3>,
     /// The seam's worst verdict along its length.
     pub verdict: kernel::SeamVerdict,
+    /// Successful measurement settings and diagnostics, owned by this particular seam.
+    pub details: status_details::ContinuityDetail,
 }
 
 impl SurfaceAnalysis {

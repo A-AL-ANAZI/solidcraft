@@ -12,6 +12,8 @@ use egui::{Ui, vec2};
 /// Text segments retain mixed states and optional compact clipping instead of dropdown fallback.
 #[derive(Default)]
 pub(crate) struct Segments<'a> {
+    /// Explicit focus requested by the owning form when a setting is opened for editing.
+    pub focus: Option<usize>,
     /// Per-option availability; omitted entries are enabled. Unavailable options stay faded.
     pub enabled: &'a [bool],
     /// Optional per-option refusal reasons. Disabled options remain visible and explain why.
@@ -41,6 +43,7 @@ pub(crate) fn segmented(ui: &mut Ui, selected: &mut usize, options: &[&str], con
         crate::prefs_search::reveal(ui);
     }
     let Segments {
+        focus,
         enabled,
         disabled,
         targets,
@@ -127,6 +130,9 @@ pub(crate) fn segmented(ui: &mut Ui, selected: &mut usize, options: &[&str], con
         let ui = &mut segment_ui;
         let segment_enabled = ui.is_enabled();
         let response = ui.interact(segment, id, egui::Sense::click());
+        if focus == Some(index) && segment_enabled && ui.is_visible() && ui.is_rect_visible(segment) {
+            response.request_focus();
+        }
         let on = states.get(index).copied().unwrap_or(*selected == index);
         let rounding = egui::CornerRadius {
             nw: if index == 0 { t.control_radius } else { 0 },

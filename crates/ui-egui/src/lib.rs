@@ -304,6 +304,7 @@ pub(crate) mod view_angles;
 mod view_confirm;
 pub mod view_pick;
 pub mod viewport;
+mod viewport_details;
 mod viewport_layout;
 mod viewport_status;
 mod viewport_status_fixture;

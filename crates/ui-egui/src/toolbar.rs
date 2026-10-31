@@ -2977,6 +2977,20 @@ pub fn shortcuts(app: &mut SolveApp, ctx: &egui::Context) {
         || crate::hole_presets::name_prompt_open(ctx, app.dialog.as_ref())
         || crate::personal_sheet_rules::name_prompt_open(ctx, app.dialog.as_ref());
     let inline_editor = crate::dim_view::editing();
+    if !popup_owner
+        && app.viewport_status.open_key.is_some()
+        && crate::ui_kit::details_field_owned_escape(ctx)
+        && ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+    {
+        ctx.memory_mut(|memory| {
+            if let Some(id) = memory.focused() {
+                memory.surrender_focus(id);
+            }
+        });
+        app.esc_handled = true;
+        app.escape_owner = Some(crate::EscapeOwner::Overlay);
+        return;
+    }
     if popup_owner
         || inline_editor
         || (crate::viewport_status::enabled(app) && app.ui.palette_open)

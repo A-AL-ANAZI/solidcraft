@@ -107,6 +107,10 @@ pub(super) fn interface(app: &mut SolveApp, ui: &mut egui::Ui, t: &Tokens) {
                         crate::scenario::publish_target("prefs:viewport_section_status", check.rect);
                     });
                     ui_kit::row(ui, "", |ui| {
+                        let check = setting::viewport_status_details(app, ui).on_hover_text(app.tr("prefs.viewport_status_details_help"));
+                        crate::scenario::publish_target("prefs:viewport_status_details", check.rect);
+                    });
+                    ui_kit::row(ui, "", |ui| {
                         let check = setting::viewport_status_summary(app, ui).on_hover_text(app.tr("prefs.viewport_status_summary_help"));
                         crate::scenario::publish_target("prefs:viewport_status_summary", check.rect);
                     });
