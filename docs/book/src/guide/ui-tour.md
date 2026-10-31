@@ -294,10 +294,27 @@ vision modes still apply on top of any theme.
 
 #### Theme-file options and overlays
 
-Theme authors can add `options` and `overlays` to `solidcraft-theme/1`. This is a file-format
-and resolver API; this version has no controls for changing or saving option values. Import
-uses the declared defaults. Existing files need no changes, and **Export…** still writes a
-complete snapshot of the resolved colours, radii, borders and icon palette.
+Theme authors can add `options` and `overlays` to `solidcraft-theme/1`. Offered options appear
+below the theme cards in Interface, with the theme's name. Switches, sliders, segmented choices
+and dropdowns apply immediately and are saved per theme, including a followed theme file.
+**Reset** appears when an offered value differs from its default and restores that theme's
+defaults through the same preference update path. Cancel retains its existing behaviour of
+restoring the Preferences window's opening snapshot. Themes with no offered options add no
+options block or badge. Existing theme files need no changes or appearance changes.
+
+Options flow left to right into two columns. A parent and its child occupy one cell; turning
+the parent off disables its child without forgetting the child's value. Choices with four or
+five values and long labels take a full row; choices with more than five values use a dropdown.
+The first ten non-advanced top-level entries appear before **More · N**; advanced entries and
+overflow always appear inside it. Section labels appear only above six top-level entries.
+Help is available on hover. A registered behaviour unavailable on the current device stays
+disabled in its place with a reason; unimplemented standard behaviours and their children
+are absent. Theme cards show an Options badge only when the theme offers controls.
+
+**Export…** preserves the authored definitions and overlays for a theme that declares them.
+Older themes still export a complete token snapshot. The resolver API clamps numeric values;
+invalid saved preference values instead fall back to the theme's defaults, retaining the raw
+saved values for compatibility.
 
 For example, add these two keys alongside a theme's `colors`:
 
@@ -336,7 +353,8 @@ For example, add these two keys alongside a theme's `colors`:
 ```
 
 A file can declare up to 16 options. Each `id` is unique and matches
-`[a-z][a-z0-9_]{0,31}`. Every option has a `type` and `default`:
+`[a-z][a-z0-9_]{0,31}`. Every option has a `type` and a `default` (opacity may omit its
+default to use 100):
 
 - `bool`: the default is `true` or `false`.
 - `choice`: `values` contains 2 to 12 entries, each with a unique `id` in the same syntax
@@ -369,9 +387,20 @@ A theme declares these with their required type and a default; it may also narro
 presentation text, `step` (fixed at 1 for standard ranges), unit and parent. A wrong type or
 bounds outside the standard range are import errors. Declaring `tab_fade_ms` also requires
 declaring its boolean parent, `tab_colours`. Custom options cannot redefine reserved ids.
-These declarations alone do not change opacity, blur or tab behaviour in this version.
+Only `opacity` currently has a registered standard behaviour. `blur`, `tab_colours` and
+`tab_fade_ms` remain absent from the list until their behaviours are registered.
 The resolver exposes declared standard options in the order `opacity`, `blur`, `tab_colours`,
 each immediately followed by its child, then custom options in declared order.
+
+Opacity scales only these floating surface fill tokens: `panel`, `panel_header`, `dialog_bg`,
+`dialog_body`, `dialog_footer`, `overlay` and `nav_tip`. Scaling is applied after matching
+overlays. All other tokens, including text, icons, borders, controls, viewport and document
+colours, retain their resolved values. At 100%, with the implicit 100% default, or without
+offered opacity, every token is exactly the original resolved value. The supported range is
+40–100%; the theme may narrow it. To keep normal text at 4.5:1 against a panel over black and
+white viewport extremes, each fill's actual alpha rises as necessary. This also protects
+against background overrides and busy models. A theme whose authored foreground and opaque
+fill already fail contrast receives full alpha; opacity never rewrites the theme's text colours.
 
 Up to 32 overlays apply in file order, after the base palette and the theme's own value tables.
 Later matching entries win by key. Every overlay has one `when`: `{"opt":"id","eq":value}`

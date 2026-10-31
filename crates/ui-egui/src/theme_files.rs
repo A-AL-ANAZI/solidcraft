@@ -264,6 +264,16 @@ impl ThemeFile {
         self.requires > REQUIREMENTS_LEVEL
     }
 
+    /// Read option tables from a stored or directly supplied theme with the import parser.
+    /// Base tables are deliberately left alone; only completely valid declarations replace these.
+    pub(crate) fn set_option_tables(&mut self, source: &Value) -> Result<(), String> {
+        let options = if self.needs_newer() { Vec::new() } else { parse_options(source.get("options"))? };
+        let overlays = if self.needs_newer() { Vec::new() } else { parse_overlays(source.get("overlays"), &options)? };
+        self.options = options;
+        self.overlays = overlays;
+        Ok(())
+    }
+
     /// Validate direct control-channel preference updates as strictly as file imports.
     pub(crate) fn validate_radii(&self) -> Result<(), String> {
         for (key, value) in &self.radii {
@@ -704,7 +714,7 @@ fn parse_option(v: &Value) -> Result<OptionDef, String> {
         if step <= 0.0 {
             return Err("`step` must be greater than zero".into());
         }
-        let default = option_number(v, "default")?;
+        let default = if id == "opacity" && v.get("default").is_none() { 100.0 } else { option_number(v, "default")? };
         let default = if reserved {
             default.clamp(min, max)
         } else {
@@ -987,7 +997,7 @@ pub fn resolve(theme: &ThemeFile) -> Tokens {
 /// Resolve base tables, then matching overlays in file order. Later tables replace earlier
 /// entries by key. Saved values are normalized here too, so callers cannot bypass finite checks.
 pub fn resolve_with(theme: &ThemeFile, saved: &BTreeMap<String, OptionValue>) -> Tokens {
-    if theme.needs_newer() || theme.overlays.is_empty() || theme.overlays.len() > MAX_OVERLAYS {
+    if theme.needs_newer() || (theme.options.is_empty() && theme.overlays.is_empty()) || theme.overlays.len() > MAX_OVERLAYS {
         return resolve_base(theme);
     }
     let options = usable_options(theme);
@@ -1012,7 +1022,9 @@ pub fn resolve_with(theme: &ThemeFile, saved: &BTreeMap<String, OptionValue>) ->
         merged.borders.extend(overlay.values.borders);
         merged.icon_palette.extend(overlay.values.icon_palette);
     }
-    resolve_base(&merged)
+    let mut tokens = resolve_base(&merged);
+    crate::theme_options::apply(theme, &values, &mut tokens);
+    tokens
 }
 
 /// A colour the saved preferences hold that this version cannot read is skipped safely.
@@ -1735,6 +1747,85 @@ mod tests {
             source["requires"] = invalid;
             assert!(from_value(&source).unwrap_err().contains("requires"));
         }
+    }
+
+    #[test]
+    fn theme_options_opacity_only_changes_floating_fill_roles_and_full_is_exact() {
+        for base in ["light", "dark"] {
+            let mut source = json!({"format":FORMAT,"name":"Opacity","base":base,"options":[{"id":"opacity","type":"range"}]});
+            let file = from_value(&source).unwrap();
+            let original = resolve_base(&file);
+            assert_eq!(resolve(&file), original, "omitted default is 100");
+            assert_eq!(resolve_with(&file, &BTreeMap::from([("opacity".into(), OptionValue::Num(100.0))])), original);
+            let faded = resolve_with(&file, &BTreeMap::from([("opacity".into(), OptionValue::Num(60.0))]));
+            let mut only_fills = original;
+            only_fills.panel = faded.panel;
+            only_fills.panel_header = faded.panel_header;
+            only_fills.dialog_bg = faded.dialog_bg;
+            only_fills.dialog_body = faded.dialog_body;
+            only_fills.dialog_footer = faded.dialog_footer;
+            only_fills.overlay = faded.overlay;
+            only_fills.nav_tip = faded.nav_tip;
+            assert_eq!(faded, only_fills, "every other token (including text/icons/borders) stays exact");
+            assert!(faded.panel.a() < original.panel.a(), "the effect must actually change a panel");
+            source["options"] = json!([]);
+            let without = from_value(&source).unwrap();
+            assert_eq!(resolve_with(&without, &BTreeMap::from([("opacity".into(), OptionValue::Num(40.0))])), resolve_base(&without));
+        }
+    }
+
+    #[test]
+    fn theme_options_opacity_contrast_protects_text_at_40_over_viewport_extremes() {
+        use crate::theme::{composite, contrast_ratio};
+        for base in ["light", "dark"] {
+            let file = from_value(&json!({"format":FORMAT,"name":"Contrast","base":base,
+                "options":[{"id":"opacity","type":"range","default":40}]}))
+            .unwrap();
+            let full = resolve_base(&file);
+            let faded = resolve(&file);
+            for (role, fill) in [
+                ("panel", faded.panel),
+                ("panel_header", faded.panel_header),
+                ("dialog_bg", faded.dialog_bg),
+                ("dialog_body", faded.dialog_body),
+                ("dialog_footer", faded.dialog_footer),
+                ("overlay", faded.overlay),
+            ] {
+                for background in [Color32::BLACK, Color32::WHITE, full.viewport_top, full.viewport_bottom] {
+                    let ground = composite(fill, background);
+                    for ink in [faded.text, faded.form_ink, faded.dialog_label] {
+                        assert!(contrast_ratio(composite(ink, ground), ground) >= 4.5, "{base} {role} {ink:?} on {background:?}: {fill:?}");
+                    }
+                }
+            }
+            for background in [Color32::BLACK, Color32::WHITE] {
+                let ground = composite(faded.nav_tip, background);
+                assert!(contrast_ratio(composite(faded.nav_tip_ink, ground), ground) >= 4.5);
+            }
+            assert!(faded.panel.a() > (f32::from(full.panel.a()) * 0.4).round() as u8, "raise the floor when requested alpha is unreadable");
+            assert!(faded.panel.a() < 255, "do not make all options effectively opaque");
+            assert_eq!(resolve_with(&file, &BTreeMap::from([("opacity".into(), OptionValue::Num(-10.0))])), faded, "theme API still clamps");
+            assert_eq!(
+                resolve_with(&file, &BTreeMap::from([("opacity".into(), OptionValue::Num(f32::NAN))])),
+                faded,
+                "non-finite values use defaults"
+            );
+        }
+    }
+
+    #[test]
+    fn theme_options_opacity_is_applied_after_overlays_and_uses_the_theme_default() {
+        let file = from_value(&json!({"format":FORMAT,"name":"Overlay opacity","base":"dark",
+            "options":[{"id":"opacity","type":"range","default":60},{"id":"warm","type":"bool","default":true}],
+            "overlays":[{"when":{"opt":"warm","eq":true},"colors":{"panel":"#111111"}}]}))
+        .unwrap();
+        let faded = resolve(&file);
+        let full = resolve_with(&file, &BTreeMap::from([("opacity".into(), OptionValue::Num(100.0))]));
+        assert_eq!(full.panel, Color32::from_rgb(17, 17, 17));
+        assert!(faded.panel.a() < full.panel.a());
+        assert_eq!(faded.text, full.text);
+        // Premultiplied Color32 storage can quantize unmultiplied channels by one byte.
+        assert!(faded.panel.to_srgba_unmultiplied()[..3].iter().all(|c| c.abs_diff(17) <= 1));
     }
 
     #[test]

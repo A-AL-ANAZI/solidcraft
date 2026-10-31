@@ -156,6 +156,34 @@ four workspace choices without opening another viewport. Scale, palette, autosav
 and live-axis specimens share tokens and the gallery; live bars show actual calibrated
 input and introduce no repaint timer.
 
+`theme_options_list` renders generic `ThemeOptionRow` definitions without standard-option
+branches. Its pure `preferences_layout::layout` packs measured narrow/composite/wide entries
+in order, with ten non-advanced top-level cells before More. A composite retains its child in
+one cell; advanced descendants move the entire cell under More. Packing and allocation share
+measured localized label/readout widths, the form gutter and a compact slider minimum; short
+composites can share a row with narrow entries. A composite takes a full row when needed and
+stacks its controls only if they exceed that entire row's width. `theme_options_badge` paints
+inside an existing theme card and is called only for offered options. The small registry in
+`theme_options.rs` supplies standard label/help catalog ids, availability and behaviour;
+only opacity is registered today. Missing providers are absent; unavailable registered
+providers keep their controls and show their translated reason. Callers submit list edits
+and Reset through the existing atomic preference merge/control path.
+The scoped `i18n::resolved_labels` adapter keeps theme language-map text and fallback labels
+verbatim through shared controls, while stable catalog messages continue to translate.
+
+Review fixtures are in `crates/ui-egui/tests/fixtures/theme-options.json`, keyed by
+`light-0/1/3/6/12` and `dark-0/1/3/6/12`. Each value is a complete importable theme file:
+pass it as `ui.prefs` `theme_import` together with `open: "Interface"`. The 12-entry files
+include a four-choice wide row, Shadow/Softness composite, six-choice dropdown, an advanced
+entry and overflow. More contains two top-level entries. Set
+`theme_options: {"options-dark-12": {"opacity": 60}}` (or the selected fixture's id) to
+compare with 100 on a busy model. Reset uses `prefs:theme_options_reset`; More uses
+`prefs:theme_options_more`; controls and cells publish `prefs:theme_option:<id>` and
+`prefs:theme_option_cell:<id>`. Unavailable-provider specimens are internal to the existing
+`prefs::tests::theme_options_provider_registry_filters_unknown_and_retains_unavailable` test;
+they are never installed in the live registry or exposed as preferences. The manager captures
+and reviews live-app screenshot evidence separately from the headless harness tests.
+
 ## Elements
 
 `aspect_grid` composes three-column `AspectTile` choices with token-sized aspect glyphs,

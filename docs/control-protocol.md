@@ -397,7 +397,7 @@ no box selection.
 | `ui.home` | `open?`: bool; `sample?`: index | the start page: show or hide it, open a built-in sample (once built); returns `open` and the recent designs |
 | `ui.shortcut` | `command`, `key?`, `slot?`, `replace?` | a command's keys (`key`: the first, shown in menus; `keys`: all), or rebinds it: `key` becomes its only key, or with `slot` replaces its key there (one past the last adds a key, `""` there removes that key); `""` without `slot` clears them; key names are case-insensitive and modifiers are normalized (`shift+ctrl+t` becomes `Ctrl+Shift+T`); unknown and reserved keys are refused; a key another command uses is refused unless `replace` |
 | `ui.help` | `item?`: `about`, `updates` (checks for updates and shows the result), `shortcuts` (read only), `report` (opens a report draft for review), `crashes` (the Crash Reports window) | the version, commit, build date and diagnostic text |
-| `ui.prefs` | any of the [`ui.prefs` settings](#uiprefs-settings) below; also `open`, `button` and `stand_up` (listed there) | sets preferences (kept between runs), returns them all plus `dialog` (the open page or null), `apply_enabled` (whether the dialog's Apply has a change to keep), `dark`, `viewport_dark` (whether the 3D view is dark), `stand_up_offer` (the offered bodies, or null), `stand_up_note` (whether that offer is the note), `theme_followed` and `theme_follow_error` |
+| `ui.prefs` | any of the [`ui.prefs` settings](#uiprefs-settings) below; also `open`, `button` and `stand_up` (listed there) | sets preferences (kept between runs), returns them all plus `dialog` (the open page or null), `apply_enabled` (whether the dialog's Apply has a change to keep), `dark`, `viewport_dark` (whether the 3D view is dark), `stand_up_offer` (the offered bodies, or null), `stand_up_note` (whether that offer is the note), `theme_followed`, `theme_follow_error`, `theme_option_defs`, `theme_option_values` and `theme_option_notices` |
 | `ui.capture` | `action?`: `capture`, `revert`, `cancel` | answers the Capture Position question (asked when a command starts or the design is saved while components were moved without capturing); without `action`, what waits |
 | `ui.window` | `action`: minimize, maximize, restore, toggle, close | what the title bar's caption buttons do (on Windows and Linux the application bar is the title bar); close asks about unsaved designs first |
 | `ui.agent_cursor` | `show` (bool), `speed`: a number from 1 to 5 (times the normal speed) or `"instant"` (no animation: the command runs at once and the pointer jumps to where it acted), `follow_camera` (bool); all optional | the settings. While the cursor is shown, `engine.execute` first glides to the command's toolbar button and to each pick, then runs and replies; later requests wait their turn. The pointer shows the command's localized name, including commands inside a closed toolbar group; an animated batch names each command it visits. It also follows the pointer input sent with `ui.move`, `ui.click`, `ui.drag` and `ui.scroll`, as each event reaches the app, and a press leaves a ripple. `"animate": false` on a call skips it |
@@ -487,10 +487,11 @@ One setting per line, sorted by name. A change that adds a setting adds its own 
 - `status_bar` (default false: a thin bar along the window's bottom edge, below History, handle `status:bar`: what is being edited (`status:editing`), the open sketch's state in its colour (`status:sketch`) and the design's units (`status:units`, a click opens the Units menu, whose rows run `document.units`); the sketch's state then leaves the view's top-left corner, #7243)
 - `step_values` (default false: Up/Down and the wheel step a plain number in a focused value field)
 - `theme` (`dark`, `light`, `system` or a theme file's id: a built-in one such as `gruvbox-dark`, or an imported one; the reply's `theme_ids` lists them)
-- `theme_export: true` (the reply's `theme_file` is the theme on now as a complete file; see [colour themes](book/src/guide/ui-tour.md#colour-themes))
+- `theme_export: true` (the reply's `theme_file` is the active theme, including a followed file; themes with options retain their authored definitions, defaults and overlays, while older themes keep the complete snapshot shape; saved option values are excluded; see [colour themes](book/src/guide/ui-tour.md#colour-themes))
 - `theme_follow` (desktop only, default `""`: a `solidcraft-theme/1` file's path to follow as the theme, reloaded within about a second whenever it changes and when the window gains the focus; the file is read at once, and a file that doesn't read keeps the last good theme; `""` stops following, as does setting `theme`; in the browser it is an error; the launch flag `--theme-file PATH` follows a file for one run without saving it; the reply's `theme_followed` is the path followed now or null, and `theme_follow_error` why its last read was not applied, or null)
 - `theme_import` (a `solidcraft-theme/1` file's JSON or text: adds the theme and turns it on; the reply's `theme_imported` is its id)
-- `theme_remove` (an imported theme's id)
+- `theme_options` (default `{}`): a map of theme id to option-id/value map, merged per theme; `{"theme_options":{"my-theme":{"enabled":true,"amount":5}}}` changes those options, `null` resets one option, and an empty map resets that theme. Unknown themes or option ids, wrong types, unknown choices and out-of-range numbers refuse the entire call and name the key, before imports, removals, dialogs or other preference effects occur.
+- `theme_remove` (an imported theme's id; also removes its saved option values)
 - `timeline_origin_bodies` (default false: the History on the left or under the browser starts with the active component's Bodies folder and the Origin, the browser's rows with their eyes, folds and menus; the bottom History is unchanged)
 - `toast_place` (`corner` (default: notices and offers stack in one column in the view's bottom-right corner, each 360 points wide, buttons right-aligned with the main action right-most, #7893), `centre` (at the bottom centre above the view toolbar, each as wide as its text, as before))
 - `trackpad_pan` (default true: two-finger scroll pans, except Touchpad always zooms; pinch zooms)
@@ -505,6 +506,23 @@ One setting per line, sorted by name. A change that adds a setting adds its own 
 - `zoom_reverse`
 - `zoom_stop_at_model` (default false: the 3D mouse and navigation bridge stop zoom at the surface in the middle of the view; drag-zoom holds its press point; independent of `zoom_to_cursor`)
 - `zoom_to_cursor`
+
+Theme option values persist per theme, including a followed file's own id, through the same
+preference store in the browser and on desktop. Switching themes restores their saved values;
+Interface's Restore Defaults clears them. Preference exports and settings profiles carry values;
+`theme_export` carries the author's defaults. Saved entries that no longer fit a definition remain
+stored and use the default with a notice; unknown ids have a notice and no effective value.
+
+For the active theme, `theme_option_defs` lists the declared options in `ordered_options` order:
+`id`, `type`, `default`, type-specific `min`, `max`, `step`, `unit` or choice `values` (each with
+`id` and `label`), `parent`, `advanced`, `section`, `label`, `help`, `standard` and `available`.
+Labels, help and choice labels use the current language with English fallback. Unavailable
+definitions include `reason`; standard options currently have `available: false` and
+`reason: "not implemented"`. `theme_option_values` contains the effective values, including
+defaults and values of inactive children. `theme_option_notices` contains `{id, kind}` entries,
+where `kind` is `unknown_option`, `wrong_type`, `unknown_choice`, `non_finite` or `out_of_range`.
+Without an active theme file these fields are `[]`, `{}` and `[]`. Portable input
+and output schema types live in `solidcraft_engine::schema::ui_prefs` (`PrefsParams`, `PrefsReply`).
 
 Other `ui.prefs` parameters:
 

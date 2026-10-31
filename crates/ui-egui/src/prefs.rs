@@ -1,6 +1,8 @@
 //! Grouped preferences composed with the shared UI kit. Changes apply immediately; Cancel
 //! restores the opening snapshot, Apply keeps editing, and Defaults affects the current page.
 
+use std::collections::BTreeMap;
+
 use egui::{Modifiers, Pos2};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -1064,10 +1066,13 @@ preference_settings! {
     /// The application bar's logo in the theme's accent instead of the theme's logo colours.
     logo_accent: bool = false, PAGE_INTERFACE;
     /// Imported theme files (`theme_files`), kept here so they also work in the browser.
+    #[serde(deserialize_with = "themes_that_read")]
     custom_themes: Vec<crate::theme_files::ThemeFile> = Vec::new();
     /// Desktop: a `solidcraft-theme/1` file another tool writes, followed as the theme and
     /// reloaded when it changes (#7573). Empty (the default): no file is followed.
     theme_follow: String = String::new(), PAGE_INTERFACE;
+    /// Per-theme overrides. Raw JSON retains entries from newer or hand-edited settings.
+    theme_options: BTreeMap<String, BTreeMap<String, serde_json::Value>> = BTreeMap::new(), PAGE_INTERFACE;
     /// Interface language (a registered locale ID).
     language: String = "en".into(), 0;
     /// Shared workspace composition; system windows and popups retain their purpose.
@@ -1732,7 +1737,9 @@ fn theme_row(app: &mut SolveApp, ui: &mut egui::Ui) {
                 let palette = match id.as_str() {
                     "light" | "system" => Tokens::light(),
                     "dark" => Tokens::dark(),
-                    _ => crate::theme_files::find(id, &app.preferences.custom_themes).map(crate::theme_files::resolve).unwrap_or_else(Tokens::dark),
+                    _ => crate::theme_files::find(id, &app.preferences.custom_themes)
+                        .map(|f| resolved_theme(&app.preferences, f))
+                        .unwrap_or_else(Tokens::dark),
                 };
                 let custom = app.preferences.custom_themes.iter().any(|t| t.id == *id);
                 let note = app.tr(if id == "system" {
@@ -1750,6 +1757,12 @@ fn theme_row(app: &mut SolveApp, ui: &mut egui::Ui) {
                     true,
                     ui_kit::PreferenceFigure::Theme { palette: palette.into(), system: id == "system" },
                 );
+                if crate::theme_files::find(id, &app.preferences.custom_themes)
+                    .is_some_and(|file| !crate::theme_options::offered(file, crate::theme_options::PROVIDERS).is_empty())
+                {
+                    ui_kit::theme_options_badge(ui, response.rect, app.tr("prefs.theme_options_badge"));
+                    crate::scenario::publish_rect(&format!("prefs:theme_options_badge:{id}"), response.rect);
+                }
                 crate::scenario::publish_target(&format!("prefs:theme_tile:{id}"), response.rect);
                 crate::scenario::publish_target(&format!("prefs:theme:{id}"), response.rect);
                 if !following && app.preferences.theme == *id {
@@ -2040,12 +2053,11 @@ pub fn apply(app: &mut SolveApp, ctx: &egui::Context) {
     // A theme file's palette, in place of its base's (dark or light); the visuals follow. A
     // followed file (#7573) wins while it is followed and has read completely once.
     follow_theme_file(app, ctx);
-    let file = app.prefs_window.follow.theme().or_else(|| crate::theme_files::find(&app.preferences.theme, &app.preferences.custom_themes));
-    if let Some(f) = file {
-        app.ui.dark = f.base.is_dark();
+    let custom = active_theme_file(app).map(|f| crate::theme::Custom { dark: f.base.is_dark(), tokens: resolved_theme(&app.preferences, f) });
+    if let Some(custom) = &custom {
+        app.ui.dark = custom.dark;
     }
-    let follows_system = app.preferences.theme == "system" && file.is_none();
-    let custom = file.map(|f| crate::theme::Custom { dark: f.base.is_dark(), tokens: crate::theme_files::resolve(f) });
+    let follows_system = app.preferences.theme == "system" && custom.is_none();
     if crate::theme::set_custom(custom) {
         app.styled = false;
     }
@@ -3094,37 +3106,88 @@ fn button_job_picker(
 /// Returns them all, the open page, the offer (and whether it is the note), the theme ids and the
 /// followed file (`theme_followed`, `theme_follow_error`).
 pub fn control(app: &mut SolveApp, p: &serde_json::Value) -> Result<serde_json::Value, String> {
-    let mut rest = p.as_object().cloned().unwrap_or_default();
-    if let Some(page) = rest.remove("open") {
-        let name = page.as_str().unwrap_or("General");
-        let i = page_index(name).ok_or_else(|| format!("no page `{name}` ({})", PAGES.join(", ")))?;
+    // Stage every fallible preference operation before dialogs, document actions or writes.
+    let mut rest = p.as_object().cloned().ok_or("preferences must be an object")?;
+    let page = rest
+        .remove("open")
+        .map(|page| {
+            let name = page.as_str().unwrap_or("General");
+            page_index(name)
+                .map(|i| (i, name.eq_ignore_ascii_case("Interface/Navigation bar")))
+                .ok_or_else(|| format!("no page `{name}` ({})", PAGES.join(", ")))
+        })
+        .transpose()?;
+    let button = rest.remove("button");
+    if let Some(b) = button.as_ref().and_then(|v| v.as_str())
+        && !["ok", "cancel", "apply", "defaults"].contains(&b)
+    {
+        return Err(format!("unknown button `{b}` (ok, cancel, apply, defaults)"));
+    }
+    let stand_up = rest.remove("stand_up").and_then(|v| v.as_bool());
+    let mut staged = app.preferences.clone();
+    let mut follow = app.prefs_window.follow.clone();
+    let imported = rest
+        .remove("theme_import")
+        .map(|value| {
+            let theme = match value {
+                serde_json::Value::String(text) => crate::theme_files::parse(&text)?,
+                other => crate::theme_files::from_value(&other)?,
+            };
+            let id = crate::theme_files::add(&mut staged.custom_themes, theme)?;
+            staged.theme = id.clone();
+            Ok::<_, String>(id)
+        })
+        .transpose()?;
+    if let Some(id) = rest.remove("theme_remove") {
+        let id = id.as_str().unwrap_or_default();
+        let i = staged.custom_themes.iter().position(|t| t.id == id).ok_or_else(|| format!("no imported theme `{id}`"))?;
+        let gone = staged.custom_themes.remove(i);
+        staged.theme_options.remove(id);
+        if staged.theme == id {
+            staged.theme = if gone.base.is_dark() { "dark" } else { "light" }.into();
+        }
+    }
+    match rest.remove("theme_follow") {
+        Some(value) => {
+            if !FOLLOW_AVAILABLE {
+                return Err(FOLLOW_UNAVAILABLE.into());
+            }
+            let path = value.as_str().ok_or("`theme_follow` must be a theme file's path, or an empty string to stop following")?;
+            staged.theme_follow = crate::theme_files::follow_path(path)?;
+            follow.launch = None;
+            let _ = follow.poll(&staged.theme_follow, f64::NEG_INFINITY, true);
+        }
+        None if rest.contains_key("theme") => {
+            staged.theme_follow.clear();
+            follow.launch = None;
+            let _ = follow.poll("", f64::NEG_INFINITY, true);
+        }
+        None => {}
+    }
+    let export = rest.remove("theme_export").and_then(|v| v.as_bool()).unwrap_or(false);
+    let new = prepare_preferences(app, &staged, followed_theme(&staged, &follow), &serde_json::Value::Object(rest.clone()))?;
+    let stopped_following = !app.prefs_window.follow.path(&app.preferences.theme_follow).is_empty() && follow.path(&new.theme_follow).is_empty();
+    if stand_up == Some(true) && app.stand_up.is_none() {
+        return Err("no file is waiting to be stood up".into());
+    }
+    if let Some((i, navbar)) = page {
         open_at(app, i);
-        app.prefs_window.navbar_scroll = name.eq_ignore_ascii_case("Interface/Navigation bar");
+        app.prefs_window.navbar_scroll = navbar;
         if app.prefs_window.snapshot.is_none() {
             app.prefs_window.snapshot = Some(Snapshot::take(app));
         }
     }
-    match rest.remove("stand_up").and_then(|v| v.as_bool()) {
+    match stand_up {
         Some(true) => crate::stand_up::stand_up(app)?,
         Some(false) => crate::stand_up::leave(app),
         None => {}
     }
-    let imported = match rest.remove("theme_import") {
-        Some(v) => Some(import_theme(app, &v)?),
-        None => None,
-    };
-    if let Some(id) = rest.remove("theme_remove") {
-        remove_theme(app, id.as_str().unwrap_or_default())?;
+    if stopped_following {
+        // Restore the selected theme's dark/light mode even when its saved id did not change.
+        stop_following(app);
     }
-    match rest.remove("theme_follow") {
-        Some(v) => set_theme_follow(app, &v, FOLLOW_AVAILABLE)?,
-        // Choosing a theme stops following a file, as clicking a theme tile does.
-        None if rest.contains_key("theme") => stop_following(app),
-        None => {}
-    }
-    let export = rest.remove("theme_export").and_then(|v| v.as_bool()).unwrap_or(false);
-    let button = rest.remove("button");
-    let mut out = set(app, &serde_json::Value::Object(rest))?;
+    app.prefs_window.follow = follow;
+    let mut out = apply_preferences(app, new, &serde_json::Value::Object(rest))?;
     match button.as_ref().and_then(|b| b.as_str()) {
         Some("ok") => close(app, false),
         Some("cancel") => close(app, true),
@@ -3139,6 +3202,9 @@ pub fn control(app: &mut SolveApp, p: &serde_json::Value) -> Result<serde_json::
         out = serde_json::to_value(&app.preferences).map_err(|e| e.to_string())?;
     }
     if let Some(o) = out.as_object_mut() {
+        if let serde_json::Value::Object(options) = serde_json::to_value(theme_options_reply(app)).map_err(|e| e.to_string())? {
+            o.extend(options);
+        }
         o.insert("dialog".into(), json!(app.prefs_window.open.then(|| PAGES.get(app.prefs_window.section).copied().unwrap_or_default())));
         o.insert("apply_enabled".into(), json!(apply_pending(app)));
         o.insert("stand_up_offer".into(), json!(app.stand_up));
@@ -3158,6 +3224,28 @@ pub fn control(app: &mut SolveApp, p: &serde_json::Value) -> Result<serde_json::
         }
     }
     Ok(out)
+}
+
+/// Read stored theme identity/base tables with the existing serde contract, then normalize only
+/// option tables using the file-import parser. A stale declaration must not lose the base palette.
+fn theme_from_preferences(value: &serde_json::Value, strict: bool) -> Result<crate::theme_files::ThemeFile, String> {
+    let mut base = value.clone();
+    if let Some(object) = base.as_object_mut() {
+        object.remove("options");
+        object.remove("overlays");
+    }
+    let mut theme: crate::theme_files::ThemeFile = serde_json::from_value(base).map_err(|e| e.to_string())?;
+    if let Err(error) = theme.set_option_tables(value) {
+        if strict {
+            return Err(error);
+        }
+        log::warn!("preferences: theme `{}` has invalid option tables ({error}); keeping its base palette", theme.id);
+    }
+    Ok(theme)
+}
+
+fn themes_that_read<'de, D: serde::Deserializer<'de>>(saved: D) -> Result<Vec<crate::theme_files::ThemeFile>, D::Error> {
+    Vec::<serde_json::Value>::deserialize(saved)?.iter().map(|value| theme_from_preferences(value, false).map_err(serde::de::Error::custom)).collect()
 }
 
 /// The saved 3D mouse calibrations that still read. One this version can't read (a hand edit, a
@@ -3328,6 +3416,7 @@ fn remove_theme(app: &mut SolveApp, id: &str) -> Result<(), String> {
         return Err(format!("no imported theme `{id}`"));
     };
     let gone = app.preferences.custom_themes.remove(i);
+    app.preferences.theme_options.remove(id);
     if app.preferences.theme == id {
         select_theme(app, if gone.base.is_dark() { "dark" } else { "light" });
     }
@@ -3336,14 +3425,246 @@ fn remove_theme(app: &mut SolveApp, id: &str) -> Result<(), String> {
 
 /// The theme on now as a complete theme file, a starting point for a new one.
 fn current_theme_file(app: &SolveApp) -> serde_json::Value {
-    theme_file(app, &app.preferences.theme, app.ui.dark)
+    match active_theme_file(app) {
+        Some(f) => export_theme_file(f),
+        None => theme_file(app, &app.preferences.theme, app.ui.dark),
+    }
+}
+
+fn active_theme_file(app: &SolveApp) -> Option<&crate::theme_files::ThemeFile> {
+    followed_theme(&app.preferences, &app.prefs_window.follow)
+        .or_else(|| crate::theme_files::find(&app.preferences.theme, &app.preferences.custom_themes))
+}
+
+fn followed_theme<'a>(prefs: &Prefs, follow: &'a crate::theme_files::Follow) -> Option<&'a crate::theme_files::ThemeFile> {
+    (!follow.path(&prefs.theme_follow).is_empty()).then(|| follow.theme()).flatten()
+}
+
+/// Preserve authored definitions; themes predating options retain their complete snapshot export.
+fn export_theme_file(file: &crate::theme_files::ThemeFile) -> serde_json::Value {
+    if !file.options.is_empty() || !file.overlays.is_empty() || file.needs_newer() {
+        crate::theme_files::export_file(file)
+    } else {
+        crate::theme_files::export(&file.name, file.base, &crate::theme_files::resolve(file))
+    }
+}
+
+fn effective_theme_options(
+    prefs: &Prefs,
+    file: &crate::theme_files::ThemeFile,
+) -> (BTreeMap<String, crate::theme_files::OptionValue>, Vec<solidcraft_engine::schema::ui_prefs::ThemeOptionNotice>) {
+    use crate::theme_files::{OptionKind, OptionNoticeKind, OptionValue};
+    use solidcraft_engine::schema::ui_prefs::{ThemeOptionNotice, ThemeOptionNoticeKind as Kind};
+    let mut saved = BTreeMap::new();
+    let mut notices = Vec::new();
+    let definitions = crate::theme_files::ordered_options(file);
+    for (id, value) in prefs.theme_options.get(&file.id).into_iter().flatten() {
+        let definition = definitions.iter().find(|o| &o.id == id);
+        if let Some(definition) = definition
+            && let OptionKind::Range { min, max, .. } = &definition.kind
+            && value.as_f64().is_some_and(|n| n < f64::from(*min) || n > f64::from(*max))
+        {
+            notices.push(ThemeOptionNotice { id: id.clone(), kind: Kind::OutOfRange });
+            continue;
+        }
+        match serde_json::from_value::<OptionValue>(value.clone()) {
+            Ok(value) => {
+                saved.insert(id.clone(), value);
+            }
+            Err(_) => {
+                notices.push(ThemeOptionNotice { id: id.clone(), kind: if definition.is_some() { Kind::WrongType } else { Kind::UnknownOption } })
+            }
+        }
+    }
+    let (values, problems) = crate::theme_files::effective_values(file, &saved);
+    notices.extend(problems.into_iter().map(|notice| ThemeOptionNotice {
+        id: notice.id,
+        kind: match notice.kind {
+            OptionNoticeKind::UnknownOption => Kind::UnknownOption,
+            OptionNoticeKind::WrongType => Kind::WrongType,
+            OptionNoticeKind::UnknownChoice => Kind::UnknownChoice,
+            OptionNoticeKind::NonFinite => Kind::NonFinite,
+            OptionNoticeKind::Clamped => Kind::OutOfRange,
+        },
+    }));
+    notices.sort_by(|a, b| a.id.cmp(&b.id));
+    (values, notices)
+}
+
+fn resolved_theme(prefs: &Prefs, file: &crate::theme_files::ThemeFile) -> Tokens {
+    crate::theme_files::resolve_with(file, &effective_theme_options(prefs, file).0)
+}
+
+fn theme_option_text(text: &crate::theme_files::OptionText, language: &str, fallback: &str) -> String {
+    text.get(language).or_else(|| text.get("en")).map(String::as_str).unwrap_or(fallback).to_owned()
+}
+
+fn theme_option_rows<'a>(
+    file: &'a crate::theme_files::ThemeFile,
+    language: &str,
+    providers: &[crate::theme_options::Provider],
+) -> Vec<ui_kit::ThemeOptionRow<'a>> {
+    use crate::theme_options::{Availability, offered, provider};
+    let locale = crate::i18n::Locale::for_language(language);
+    offered(file, providers)
+        .into_iter()
+        .map(|definition| {
+            let provider = provider(&definition.id, providers);
+            ui_kit::ThemeOptionRow {
+                definition,
+                label: provider
+                    .map(|p| locale.text(p.label).to_owned())
+                    .unwrap_or_else(|| theme_option_text(&definition.label, language, &definition.id)),
+                help: provider.map(|p| locale.text(p.help).to_owned()).unwrap_or_else(|| theme_option_text(&definition.help, language, "")),
+                choices: match &definition.kind {
+                    crate::theme_files::OptionKind::Choice { values, .. } => {
+                        values.iter().map(|v| theme_option_text(&v.label, language, &v.id)).collect()
+                    }
+                    _ => Vec::new(),
+                },
+                reason: provider.and_then(|p| match (p.availability)() {
+                    Availability::Available => None,
+                    Availability::Unavailable(reason) => Some(locale.text(reason).to_owned()),
+                }),
+            }
+        })
+        .collect()
+}
+
+fn theme_options_row(app: &mut SolveApp, ui: &mut egui::Ui) {
+    let Some(file) = active_theme_file(app) else { return };
+    let rows = theme_option_rows(file, &app.preferences.language, crate::theme_options::PROVIDERS);
+    if rows.is_empty() {
+        return;
+    }
+    let (mut values, _) = effective_theme_options(&app.preferences, file);
+    let before = values.clone();
+    let reset = ui_kit::theme_options_list(ui, &file.id, &file.name, &rows, &mut values);
+    let changes: BTreeMap<_, _> = values.into_iter().filter(|(id, value)| before.get(id) != Some(value)).collect();
+    if reset || !changes.is_empty() {
+        let update = if reset { json!({}) } else { json!(changes) };
+        let params = json!({"theme_options": {(file.id.clone()): update}});
+        // Same atomic validation/merge and followed-file semantics as the control channel.
+        // No button, page selection or dialog is added by this live preference update.
+        if let Err(error) = control(app, &params) {
+            app.set_status(error, true);
+        }
+    }
+}
+
+/// Only explicitly supplied entries are checked. Stale saved entries survive unrelated changes.
+fn merge_theme_options(prefs: &mut Prefs, followed: Option<&crate::theme_files::ThemeFile>, update: &serde_json::Value) -> Result<(), String> {
+    use crate::theme_files::{OptionKind, OptionValue};
+    let themes = update.as_object().ok_or("`theme_options` must be a map of theme ids to option maps")?;
+    for (theme_id, update) in themes {
+        let key = format!("theme_options.{theme_id}");
+        let file = followed.filter(|f| &f.id == theme_id).or_else(|| crate::theme_files::find(theme_id, &prefs.custom_themes));
+        let mode = THEMES.iter().any(|(id, _)| *id == theme_id.as_str());
+        if file.is_none() && !mode {
+            return Err(format!("`{key}`: unknown theme"));
+        }
+        let options = update.as_object().ok_or_else(|| format!("`{key}` must be an option map"))?;
+        if options.is_empty() {
+            prefs.theme_options.remove(theme_id);
+            continue;
+        }
+        for (id, value) in options {
+            let key = format!("{key}.{id}");
+            let definition = file
+                .and_then(|file| crate::theme_files::ordered_options(file).into_iter().find(|o| &o.id == id))
+                .ok_or_else(|| format!("`{key}`: unknown option"))?;
+            if value.is_null() {
+                if let Some(saved) = prefs.theme_options.get_mut(theme_id) {
+                    saved.remove(id);
+                }
+                continue;
+            }
+            let parsed: OptionValue = serde_json::from_value(value.clone()).map_err(|_| format!("`{key}`: wrong type"))?;
+            let valid = match (&definition.kind, &parsed) {
+                (OptionKind::Bool { .. }, OptionValue::Bool(_)) => true,
+                (OptionKind::Choice { values, .. }, OptionValue::Choice(id)) => values.iter().any(|v| &v.id == id),
+                (OptionKind::Range { min, max, .. }, OptionValue::Num(n)) => {
+                    // Check the original JSON number too, before f32 conversion rounds at a bound.
+                    n.is_finite() && value.as_f64().is_some_and(|n| n.is_finite() && n >= f64::from(*min) && n <= f64::from(*max))
+                }
+                _ => false,
+            };
+            if !valid {
+                return Err(format!("`{key}`: wrong type, unknown choice or out of range"));
+            }
+            prefs.theme_options.entry(theme_id.clone()).or_default().insert(id.clone(), value.clone());
+        }
+        if prefs.theme_options.get(theme_id).is_some_and(BTreeMap::is_empty) {
+            prefs.theme_options.remove(theme_id);
+        }
+    }
+    Ok(())
+}
+
+fn theme_options_reply(app: &SolveApp) -> solidcraft_engine::schema::ui_prefs::ThemeOptionsReply {
+    use crate::theme_files::{OptionKind, OptionValue};
+    use solidcraft_engine::schema::ui_prefs::{ThemeChoice, ThemeOptionDef, ThemeOptionKind, ThemeOptionValue, ThemeOptionsReply};
+    let Some(file) = active_theme_file(app) else { return ThemeOptionsReply::default() };
+    let text = |texts: &crate::theme_files::OptionText, fallback: &str| {
+        texts.get(&app.preferences.language).or_else(|| texts.get("en")).map(String::as_str).unwrap_or(fallback).to_string()
+    };
+    let (values, notices) = effective_theme_options(&app.preferences, file);
+    ThemeOptionsReply {
+        theme_option_defs: crate::theme_files::ordered_options(file)
+            .into_iter()
+            .map(|o| {
+                let standard = crate::theme_options::standard(&o.id);
+                let provider = crate::theme_options::provider(&o.id, crate::theme_options::PROVIDERS);
+                let availability = provider.map(|p| (p.availability)());
+                ThemeOptionDef {
+                    id: o.id.clone(),
+                    kind: match &o.kind {
+                        OptionKind::Bool { default } => ThemeOptionKind::Bool { default: *default },
+                        OptionKind::Choice { default, values } => ThemeOptionKind::Choice {
+                            default: default.clone(),
+                            values: values.iter().map(|v| ThemeChoice { id: v.id.clone(), label: text(&v.label, &v.id) }).collect(),
+                        },
+                        OptionKind::Range { default, min, max, step, unit } => {
+                            ThemeOptionKind::Range { default: *default, min: *min, max: *max, step: *step, unit: unit.clone() }
+                        }
+                    },
+                    label: provider.map(|p| app.tr(p.label).to_owned()).unwrap_or_else(|| text(&o.label, &o.id)),
+                    help: provider.map(|p| app.tr(p.help).to_owned()).unwrap_or_else(|| text(&o.help, "")),
+                    parent: o.parent.clone(),
+                    advanced: o.advanced,
+                    section: o.section.clone(),
+                    standard,
+                    available: !standard || availability == Some(crate::theme_options::Availability::Available),
+                    reason: match availability {
+                        Some(crate::theme_options::Availability::Unavailable(reason)) => Some(app.tr(reason).to_owned()),
+                        None if standard => Some("not implemented".into()),
+                        _ => None,
+                    },
+                }
+            })
+            .collect(),
+        theme_option_values: values
+            .into_iter()
+            .map(|(id, value)| {
+                (
+                    id,
+                    match value {
+                        OptionValue::Bool(v) => ThemeOptionValue::Bool(v),
+                        OptionValue::Choice(v) => ThemeOptionValue::Choice(v),
+                        OptionValue::Num(v) => ThemeOptionValue::Num(v),
+                    },
+                )
+            })
+            .collect(),
+        theme_option_notices: notices,
+    }
 }
 
 /// Export the tile the user chose, without applying it or changing the dialog snapshot.
 fn theme_file(app: &SolveApp, id: &str, system_dark: bool) -> serde_json::Value {
-    use crate::theme_files::{Base, export, find, resolve};
+    use crate::theme_files::{Base, export, find};
     match find(id, &app.preferences.custom_themes) {
-        Some(f) => export(&f.name, f.base, &resolve(f)),
+        Some(f) => export_theme_file(f),
         None if id == "dark" || (id == "system" && system_dark) => export("Dark", Base::Dark, &crate::theme::Tokens::dark()),
         None => export("Light", Base::Light, &crate::theme::Tokens::light()),
     }
@@ -3443,8 +3764,13 @@ pub fn lenient(saved: &serde_json::Value) -> Prefs {
     serde_json::from_value(cur).map(migrate).map(limit_disabled_plugins).map(limit_toolbar_tabs).unwrap_or_default()
 }
 
-/// Set preferences from JSON (control channel); returns them all.
-pub fn set(app: &mut SolveApp, p: &serde_json::Value) -> Result<serde_json::Value, String> {
+/// Validate a proposed preference state without applying it or performing writes.
+fn prepare_preferences(
+    app: &SolveApp,
+    base: &Prefs,
+    followed: Option<&crate::theme_files::ThemeFile>,
+    p: &serde_json::Value,
+) -> Result<Prefs, String> {
     for key in ["joint_rotation_coarse", "joint_rotation_fine"] {
         if let Some(value) = p.get(key)
             && value.as_f64().is_none_or(|v| !v.is_finite() || !(0.001..=180.0).contains(&v))
@@ -3452,13 +3778,26 @@ pub fn set(app: &mut SolveApp, p: &serde_json::Value) -> Result<serde_json::Valu
             return Err(format!("`{key}` must be 0.001…180 degrees"));
         }
     }
-    let mut cur = serde_json::to_value(&app.preferences).map_err(|e| e.to_string())?;
+    let mut cur = serde_json::to_value(base).map_err(|e| e.to_string())?;
     if let (Some(o), Some(src)) = (cur.as_object_mut(), p.as_object()) {
         for (k, v) in src {
             if !o.contains_key(k) {
                 return Err(format!("unknown preference `{k}`"));
             }
-            o.insert(k.clone(), v.clone());
+            if k == "custom_themes" {
+                let values = v
+                    .as_array()
+                    .filter(|values| values.len() <= crate::theme_files::MAX_CUSTOM)
+                    .ok_or_else(|| format!("`custom_themes` must be an array of at most {} themes", crate::theme_files::MAX_CUSTOM))?;
+                let themes: Vec<_> = values
+                    .iter()
+                    .enumerate()
+                    .map(|(i, value)| theme_from_preferences(value, true).map_err(|error| format!("`custom_themes[{i}]`: {error}")))
+                    .collect::<Result<_, _>>()?;
+                o.insert(k.clone(), serde_json::to_value(themes).map_err(|e| e.to_string())?);
+            } else if k != "theme_options" {
+                o.insert(k.clone(), v.clone());
+            }
         }
     }
     // Saved preferences read an unknown mode as the default; asked for here, it is an error.
@@ -3480,7 +3819,10 @@ pub fn set(app: &mut SolveApp, p: &serde_json::Value) -> Result<serde_json::Valu
     {
         return Err("`stand_up_unknown` must be ask, note or off".into());
     }
-    let new: Prefs = serde_json::from_value(cur).map_err(|e| e.to_string())?;
+    let mut new: Prefs = serde_json::from_value(cur).map_err(|e| e.to_string())?;
+    if let Some(update) = p.get("theme_options") {
+        merge_theme_options(&mut new, followed, update)?;
+    }
     if !accepted::wheel_zoom_speed(&new) {
         return Err("`wheel_zoom_speed` must be 0.25…4".into());
     }
@@ -3568,7 +3910,19 @@ pub fn set(app: &mut SolveApp, p: &serde_json::Value) -> Result<serde_json::Valu
     if MiddleDoubleClick::parse(&new.middle_double_click).is_none() {
         return Err("`middle_double_click` must be home, fit or off".into());
     }
-    if new.theme != app.preferences.theme && new.theme != "system" {
+    Ok(new)
+}
+
+/// Set preferences from JSON (control channel); returns them all.
+pub fn set(app: &mut SolveApp, p: &serde_json::Value) -> Result<serde_json::Value, String> {
+    let new = prepare_preferences(app, &app.preferences, followed_theme(&app.preferences, &app.prefs_window.follow), p)?;
+    apply_preferences(app, new, p)
+}
+
+/// All fallible preference checks finish before any application or file write.
+fn apply_preferences(app: &mut SolveApp, new: Prefs, p: &serde_json::Value) -> Result<serde_json::Value, String> {
+    let file = crate::theme_files::find(&new.theme, &new.custom_themes);
+    if (new.theme != app.preferences.theme || new.custom_themes != app.preferences.custom_themes) && new.theme != "system" {
         app.ui.dark = file.map_or(new.theme == "dark", |f| f.base.is_dark());
     }
     let units_changed = new.default_units != app.preferences.default_units;
@@ -5705,6 +6059,607 @@ mod tests {
         assert!(web.contains("not available in the browser"), "{web}");
         assert_eq!(h.app.preferences.theme_follow, "");
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    fn theme_options_fixture(base: &str, count: usize) -> serde_json::Value {
+        let fixtures: serde_json::Value = serde_json::from_str(include_str!("../tests/fixtures/theme-options.json")).unwrap();
+        fixtures[format!("{base}-{count}")].clone()
+    }
+
+    #[test]
+    fn theme_options_ui_counts_badges_more_and_reset_in_light_and_dark() {
+        for base in ["light", "dark"] {
+            for count in [0, 1, 3, 6, 12] {
+                let mut h = crate::scenario::Harness::new();
+                h.app.home.open = false;
+                h.call("ui.resize", json!({"width":1600,"height":1100}));
+                let out = h.call("ui.prefs", json!({"theme_import":theme_options_fixture(base, count),"open":"Interface"}));
+                assert!(out["error"].is_null(), "{out}");
+                h.frames(3);
+                assert_eq!(crate::scenario::rect_of("prefs:theme_options_header").is_some(), count > 0, "{base} {count}");
+                let id = format!("options-{base}-{count}");
+                assert_eq!(crate::scenario::rect_of(&format!("prefs:theme_options_badge:{id}")).is_some(), count > 0);
+                assert_eq!(crate::scenario::handle_at("prefs:theme_options_more").is_some(), count == 12);
+                let cells: std::collections::BTreeSet<_> = crate::scenario::rects("prefs:theme_option_cell:").into_iter().map(|(id, _)| id).collect();
+                assert_eq!(cells.len(), count.min(10), "only ten top-level cells before More");
+                assert_eq!(
+                    crate::scenario::rect_of("dialog:hint:theme_option_section").is_some(),
+                    count > 6,
+                    "dim section labels only above six entries"
+                );
+                assert!(crate::scenario::handle_at("prefs:theme_options_reset").is_none());
+                if count == 0 {
+                    let strip = crate::scenario::rect_of("dialog:hint:tab_accent").unwrap();
+                    let mut unknown = theme_options_fixture(base, count);
+                    unknown["options"] = json!([{"id":"blur","type":"range","default":0}]);
+                    h.call("ui.prefs", json!({"theme_import":unknown}));
+                    h.frames(2);
+                    assert!(crate::scenario::rect_of("prefs:theme_options_header").is_none());
+                    assert!(crate::scenario::rect_of(&format!("prefs:theme_options_badge:{id}")).is_none());
+                    assert_eq!(crate::scenario::rect_of("dialog:hint:tab_accent").unwrap(), strip, "unknown providers add no gap or notice");
+                }
+                if count == 12 {
+                    assert!(crate::scenario::rect_of("prefs:theme_option:outline").is_none());
+                    assert!(crate::scenario::rect_of("prefs:theme_option:extra").is_none(), "advanced is always under More");
+                    super::reveal_preference(&mut h, "prefs:theme_options_more");
+                    h.step(&json!({"click":{"handle":"prefs:theme_options_more"}})).unwrap();
+                    h.frames(2);
+                    assert!(crate::scenario::rect_of("prefs:theme_option:outline").is_some());
+                    assert!(crate::scenario::rect_of("prefs:theme_option:extra").is_some());
+                }
+                if count >= 3 {
+                    super::reveal_preference(&mut h, "prefs:theme_option_switch:Warm accent");
+                    h.step(&json!({"click":{"handle":"prefs:theme_option_switch:Warm accent"}})).unwrap();
+                    h.frames(2);
+                    assert_eq!(h.app.preferences.theme_options[&id]["warm"], true, "UI edits go through preference merging");
+                    assert!(crate::scenario::handle_at("prefs:theme_options_reset").is_some());
+                    super::reveal_preference(&mut h, "prefs:theme_options_reset");
+                    h.step(&json!({"click":{"handle":"prefs:theme_options_reset"}})).unwrap();
+                    h.frames(2);
+                    assert!(!h.app.preferences.theme_options.contains_key(&id));
+                    assert!(crate::scenario::handle_at("prefs:theme_options_reset").is_none());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn theme_options_ui_short_composite_shares_row_with_narrow_control() {
+        for base in ["light", "dark"] {
+            for language in ["en", "de"] {
+                for width in [1600, 520] {
+                    let mut h = crate::scenario::Harness::new();
+                    h.app.home.open = false;
+                    h.call("ui.resize", json!({"width":width,"height":1100}));
+                    let file = json!({"format":"solidcraft-theme/1","name":"Compact options","base":base,"options":[
+                        {"id":"shadow","type":"bool","default":true,"label":{"en":"Shadow","de":"Schatten"}},
+                        {"id":"softness","type":"range","default":5.5,"min":0,"max":10,"step":0.5,"unit":"px","parent":"shadow",
+                            "label":{"en":"Softness","de":"Weichheit"}},
+                        {"id":"edges","type":"range","default":5.5,"min":0,"max":10,"step":0.5,"unit":"px",
+                            "label":{"en":"Edges","de":"Kanten"}}
+                    ]});
+                    let out = h.call("ui.prefs", json!({"theme_import":file,"open":"Interface","language":language}));
+                    assert!(out["error"].is_null(), "{out}");
+                    h.frames(3);
+                    let rect = |name: &str| crate::scenario::rect_of(name).unwrap();
+                    let parent = rect("prefs:theme_option:shadow");
+                    let child = rect("prefs:theme_option:softness");
+                    let composite = rect("prefs:theme_option_cell:shadow");
+                    let neighbour = rect("prefs:theme_option_cell:edges");
+                    let body = rect("prefs:page_body").expand(1.0);
+                    assert!(body.contains_rect(composite) && body.contains_rect(neighbour), "{base} {language} width={width}");
+                    assert!(composite.contains_rect(parent) && composite.contains_rect(child));
+                    assert!(!composite.intersects(neighbour));
+                    if width == 1600 {
+                        assert!(
+                            (composite.top() - neighbour.top()).abs() < 1.0,
+                            "short composite must share a normal Preferences row: {composite:?} {neighbour:?}"
+                        );
+                        assert!(composite.right() < neighbour.left(), "declared left-to-right order");
+                        assert!((parent.top() - child.top()).abs() < 1.0);
+                        assert!(parent.right() < child.left(), "parent and child share one compact cell");
+                    } else {
+                        assert!(neighbour.top() > composite.bottom(), "a genuinely narrow page falls back to a full composite row");
+                    }
+                    let labels = if language == "de" { ["Schatten", "Weichheit", "Kanten"] } else { ["Shadow", "Softness", "Edges"] };
+                    let parts = [
+                        rect(&format!("dialog:label:{}", labels[0])),
+                        rect(&format!("prefs:theme_option_switch:{}", labels[0])),
+                        rect(&format!("dialog:label:{}", labels[1])),
+                        rect(&format!("dialog:slider:{}", labels[1])),
+                        rect("prefs:theme_option_readout:softness"),
+                        rect(&format!("dialog:label:{}", labels[2])),
+                        rect(&format!("dialog:slider:{}", labels[2])),
+                        rect("prefs:theme_option_readout:edges"),
+                    ];
+                    for (i, part) in parts.iter().enumerate() {
+                        assert!(body.contains_rect(*part), "{base} {language} width={width}: {part:?} outside {body:?}");
+                        for other in parts.iter().skip(i + 1) {
+                            assert!(!part.intersects(*other), "{base} {language} width={width}: {part:?} overlaps {other:?}");
+                        }
+                    }
+                    assert!(rect(&format!("dialog:slider:{}", labels[1])).width() >= Tokens::get().space_24 * 2.0, "retain a usable slider track");
+                    let control = rect(&format!("dialog:control:{}", labels[2]));
+                    let track = rect(&format!("dialog:slider_track:{}", labels[2]));
+                    let readout = rect("prefs:theme_option_readout:edges");
+                    let t = Tokens::get();
+                    let natural_width = |text: &str| {
+                        h.ctx.fonts_mut(|fonts| {
+                            fonts.layout_no_wrap(text.to_owned(), egui::FontId::proportional(t.font_label), t.form_ink).size().x.ceil()
+                        })
+                    };
+                    assert!((rect(&format!("dialog:label:{}", labels[2])).width() - natural_width(labels[2]) - t.space_4).abs() <= 1.0);
+                    assert!((readout.width() - natural_width("5.5px")).abs() <= 1.0, "readout must retain its natural width");
+                    let reserved_readout = ["0px", "10px", "5.5px", "0.5px", "9.5px"].into_iter().map(natural_width).fold(0.0, f32::max);
+                    assert!(neighbour.expand(1.0).contains_rect(control));
+                    assert!(control.contains_rect(track) && control.contains_rect(readout));
+                    assert!(
+                        (track.width() - (control.width() - reserved_readout - t.space_8 - t.space_4)).abs() <= 1.0,
+                        "standalone slider must fill the width left by its natural label and readout: {base} {language} width={width}: {control:?} {track:?} {readout:?}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn theme_options_ui_wide_composite_dropdown_and_advanced_keep_order() {
+        for base in ["light", "dark"] {
+            let mut h = crate::scenario::Harness::new();
+            h.app.home.open = false;
+            h.call("ui.resize", json!({"width":1600,"height":1100}));
+            h.call("ui.prefs", json!({"theme_import":theme_options_fixture(base, 12),"open":"Interface"}));
+            h.frames(3);
+            let rect = |id: &str| crate::scenario::rect_of(&format!("prefs:theme_option:{id}")).unwrap();
+            assert!(rect("opacity").center().x < rect("warm").center().x);
+            assert!((rect("opacity").top() - rect("warm").top()).abs() < 1.0);
+            assert!(rect("palette").top() > rect("warm").top());
+            assert!(rect("radius").top() > rect("palette").top(), "four choices occupy a full row");
+            let composite = crate::scenario::rect_of("prefs:theme_option_cell:shadow").unwrap();
+            assert!(composite.contains_rect(rect("shadow")) && composite.contains_rect(rect("softness")));
+            assert!(crate::scenario::rect_of("prefs:theme_option_cell:softness").is_none(), "child is not an eleventh cell");
+            super::reveal_preference(&mut h, "dialog:Palette:Warm");
+            h.step(&json!({"click":{"handle":"dialog:Palette:Warm"}})).unwrap();
+            h.frames(2);
+            let id = format!("options-{base}-12");
+            assert_eq!(h.app.preferences.theme_options[&id]["palette"], "v2");
+            super::reveal_preference(&mut h, "prefs:theme_option_switch:Shadow");
+            h.step(&json!({"click":{"handle":"prefs:theme_option_switch:Shadow"}})).unwrap();
+            h.frames(2);
+            assert_eq!(h.app.preferences.theme_options[&id]["shadow"], false);
+            let saved = h.app.preferences.theme_options[&id].clone();
+            let track = crate::scenario::rect_of("dialog:slider_track:Softness").unwrap();
+            h.step(&json!({"click":[track.center().x,track.center().y]})).unwrap();
+            h.frames(2);
+            assert_eq!(h.app.preferences.theme_options[&id], saved, "inactive child is inert and retains its value");
+            super::reveal_preference(&mut h, "prefs:theme_option:pattern");
+            h.step(&json!({"click":{"handle":"dialog:Pattern"}})).unwrap();
+            h.frames(2);
+            assert!(crate::scenario::handle_at("dialog:Pattern:Plain").is_some(), "six choices use a dropdown");
+            h.step(&json!({"click":{"handle":"dialog:Pattern:Plain"}})).unwrap();
+            h.frames(2);
+            assert_eq!(h.app.preferences.theme_options[&id]["pattern"], "v6");
+            assert!(crate::scenario::rect_of("prefs:theme_option:extra").is_none());
+            super::reveal_preference(&mut h, "prefs:theme_options_more");
+            h.step(&json!({"click":{"handle":"prefs:theme_options_more"}})).unwrap();
+            h.frames(2);
+            assert!(rect("extra").top() > rect("compact").top());
+            assert!((rect("extra").top() - rect("outline").top()).abs() < 1.0);
+        }
+    }
+
+    #[test]
+    fn theme_options_ui_opacity_live_reset_and_cancel_use_the_existing_path() {
+        for base in ["light", "dark"] {
+            let mut h = crate::scenario::Harness::new();
+            h.app.home.open = false;
+            control(&mut h.app, &json!({"theme_import":theme_options_fixture(base, 1)})).unwrap();
+            h.call("ui.prefs", json!({"open":"Interface"}));
+            h.frames(3);
+            let full = Tokens::get();
+            let file = active_theme_file(&h.app).unwrap();
+            let mut invalid_saved = h.app.preferences.clone();
+            invalid_saved.theme_options.entry(file.id.clone()).or_default().insert("opacity".into(), json!(20));
+            assert_eq!(resolved_theme(&invalid_saved, file), full, "saved preference fallback stays at the theme default");
+            assert_eq!(invalid_saved.theme_options[&file.id]["opacity"], 20, "fallback must retain the raw saved value");
+            super::reveal_preference(&mut h, "dialog:slider:Opacity");
+            let slider = crate::scenario::rect_of("dialog:slider_track:Opacity").unwrap();
+            h.step(&json!({"click":[slider.center().x,slider.center().y]})).unwrap();
+            h.frames(2);
+            let id = format!("options-{base}-1");
+            let value = h.app.preferences.theme_options[&id]["opacity"].as_f64().unwrap();
+            assert!((40.0..100.0).contains(&value));
+            assert!(Tokens::get().panel.a() < full.panel.a());
+            assert_eq!(Tokens::get().text, full.text);
+            assert!(h.app.prefs_window.open, "editing must keep the same Preferences window");
+            h.step(&json!({"click":{"handle":"prefs:theme_options_reset"}})).unwrap();
+            h.frames(2);
+            assert_eq!(Tokens::get(), full);
+            h.call("ui.prefs", json!({"theme_options":{(id.clone()):{"opacity":60}}}));
+            h.frames(2);
+            assert!(Tokens::get().panel.a() < full.panel.a());
+            h.call("ui.prefs", json!({"button":"cancel"}));
+            h.frames(2);
+            assert_eq!(Tokens::get(), full);
+            assert!(!h.app.preferences.theme_options.contains_key(&id));
+        }
+    }
+
+    #[test]
+    fn theme_options_provider_registry_filters_unknown_and_retains_unavailable() {
+        use crate::theme_options::{Availability, Provider};
+        let file = crate::theme_files::from_value(&json!({"format":"solidcraft-theme/1","name":"Providers","base":"dark","options":[
+            {"id":"blur","type":"range","default":0},
+            {"id":"tab_colours","type":"bool","default":true},
+            {"id":"tab_fade_ms","type":"range","default":100},
+            {"id":"dependent","type":"bool","default":true,"parent":"tab_colours"},
+            {"id":"custom","type":"bool","default":false,"label":{"en":"Custom","de":"Eigene"}},
+            {"id":"opacity","type":"range","default":100}
+        ]}))
+        .unwrap_err();
+        assert!(file.contains("more than one child"));
+        let file = crate::theme_files::from_value(&json!({"format":"solidcraft-theme/1","name":"Providers","base":"dark","options":[
+            {"id":"blur","type":"range","default":0}, {"id":"tab_colours","type":"bool","default":true},
+            {"id":"tab_fade_ms","type":"range","default":100},
+            {"id":"custom","type":"bool","default":false,"label":{"en":"Custom","de":"Eigene"}},
+            {"id":"opacity","type":"range","default":100}
+        ]}))
+        .unwrap();
+        let rows = theme_option_rows(&file, "de", crate::theme_options::PROVIDERS);
+        assert_eq!(rows.iter().map(|r| r.definition.id.as_str()).collect::<Vec<_>>(), ["opacity", "custom"]);
+        assert_eq!(rows[0].label, "Deckkraft");
+        assert_eq!(rows[1].label, "Eigene");
+        assert_eq!(theme_option_rows(&file, "ja", crate::theme_options::PROVIDERS)[1].label, "Custom", "English fallback");
+        let providers = [Provider {
+            id: "blur",
+            label: "prefs.theme_option_opacity",
+            help: "prefs.theme_option_opacity_help",
+            availability: || Availability::Unavailable("prefs.theme_options_unavailable"),
+            apply: |_, _| {},
+        }];
+        let rows = theme_option_rows(&file, "en", &providers);
+        assert_eq!(rows.iter().map(|r| r.definition.id.as_str()).collect::<Vec<_>>(), ["blur", "custom"]);
+        assert_eq!(rows[0].reason.as_deref(), Some("Unavailable on this device"));
+        // The internal fixture goes through the real kit. No fake provider is shipped.
+        for dark in [false, true] {
+            crate::theme::set_custom(None);
+            crate::theme::set_dark(dark);
+            let mut values = crate::theme_files::effective_values(&file, &BTreeMap::new()).0;
+            let before = values.clone();
+            let ctx = crate::fonts::test_context();
+            let mut draw = |events| {
+                crate::scenario::clear_handles();
+                crate::test_support::frame(
+                    &ctx,
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 600.0))),
+                        events,
+                        focused: true,
+                        ..Default::default()
+                    },
+                    |ui| {
+                        ui_kit::scope(ui, |ui| {
+                            ui_kit::theme_options_list(ui, &file.id, &file.name, &rows, &mut values);
+                        });
+                    },
+                );
+            };
+            draw(vec![]);
+            assert!(crate::scenario::rect_of("prefs:theme_option_reason:blur").is_some());
+            let at = crate::scenario::handle_at("dialog:slider:Opacity").unwrap();
+            draw(crate::test_support::pointer(at, true));
+            draw(crate::test_support::pointer(at, false));
+            assert_eq!(values, before, "unavailable controls stay visible and inert");
+        }
+    }
+
+    fn option_theme_file(name: &str) -> serde_json::Value {
+        json!({
+            "format": "solidcraft-theme/1", "name": name, "base": "dark", "colors": {"panel": "#112233"},
+            "options": [
+                {"id":"enabled", "type":"bool", "default":false, "label":{"en":"Enabled", "de":"Aktiv"}, "help":{"en":"Use the overlay", "de":"Farben verwenden"}},
+                {"id":"amount", "type":"range", "default":5, "min":0, "max":10, "step":1, "unit":"px", "advanced":true, "section":"Details"},
+                {"id":"style", "type":"choice", "default":"warm", "parent":"enabled", "values":[{"id":"warm", "label":{"en":"Warm", "de":"Warmton"}}, {"id":"cool", "label":{"en":"Cool"}}]},
+                {"id":"blur", "type":"range", "default":0}
+            ],
+            "overlays": [{"when":{"opt":"enabled", "eq":true}, "colors":{"panel":"#abcdef"}}]
+        })
+    }
+
+    #[test]
+    fn theme_options_raw_values_default_while_theme_api_clamps() {
+        use crate::theme_files::{OptionNotice, OptionNoticeKind, OptionValue};
+        use solidcraft_engine::schema::ui_prefs::ThemeOptionNoticeKind;
+        let file = crate::theme_files::from_value(&option_theme_file("Options A")).unwrap();
+        for (raw, clamped) in [(-1.0, 0.0), (20.0, 10.0)] {
+            let (values, notices) = crate::theme_files::effective_values(&file, &BTreeMap::from([("amount".into(), OptionValue::Num(raw))]));
+            assert_eq!(values["amount"], OptionValue::Num(clamped));
+            assert_eq!(notices, [OptionNotice { id: "amount".into(), kind: OptionNoticeKind::Clamped }]);
+
+            let mut prefs = Prefs::default();
+            prefs.theme_options.insert(file.id.clone(), BTreeMap::from([("amount".into(), json!(raw))]));
+            let saved = prefs.theme_options.clone();
+            let (values, notices) = effective_theme_options(&prefs, &file);
+            assert_eq!(values["amount"], OptionValue::Num(5.0));
+            assert_eq!(notices.len(), 1);
+            assert_eq!((notices[0].id.as_str(), notices[0].kind), ("amount", ThemeOptionNoticeKind::OutOfRange));
+            assert_eq!(prefs.theme_options, saved);
+        }
+    }
+
+    #[test]
+    fn theme_options_direct_definitions_validate_and_restore_safely() {
+        let mut source = option_theme_file("Options A");
+        source["id"] = json!("options-a");
+        let mut other = source.clone();
+        other["id"] = json!("options-b");
+        other["name"] = json!("Options B");
+        let mut app = SolveApp::new(solidcraft_engine::Session::default(), crate::Services::default());
+        let invalid_tables = [
+            ("options", json!((0..17).map(|i| json!({"id":format!("option_{i}"),"type":"bool","default":true})).collect::<Vec<_>>())),
+            ("options", json!([{ "id":"amount","type":"range","default":5,"min":10,"max":0,"step":1 }])),
+            ("options", json!([{ "id":"amount","type":"range","default":11,"min":0,"max":10,"step":1 }])),
+            ("options", json!([{ "id":"amount","type":"range","default":5,"min":0,"max":10,"step":0 }])),
+            ("options", json!([{ "id":"amount","type":"range","default":"bad","min":0,"max":10,"step":1 }])),
+            ("options", json!([{ "id":"enabled","type":"unknown","default":true }])),
+            ("options", json!([{ "id":"enabled","type":"bool","default":true,"parent":"missing" }])),
+            ("options", json!([{ "id":"a","type":"bool","default":true,"parent":"b" },{ "id":"b","type":"bool","default":true,"parent":"a" }])),
+            ("options", json!([{ "id":"style","type":"choice","default":"missing","values":[{"id":"a","label":{}}] }])),
+            ("overlays", json!((0..33).map(|_| json!({"when":{"opt":"enabled","eq":true},"colors":{"panel":"#abcdef"}})).collect::<Vec<_>>())),
+            ("overlays", json!([{ "when":{"opt":"enabled","eq":1},"colors":{"panel":"#abcdef"} }])),
+            ("overlays", json!([{ "when":{"opt":"unknown","eq":true},"colors":{"panel":"#abcdef"} }])),
+            ("overlays", json!([{ "when":{"opt":"enabled","eq":true},"radii":{"radius_sm":-1} }])),
+        ];
+        for (table, invalid) in invalid_tables {
+            let mut malformed = source.clone();
+            malformed[table] = invalid;
+            assert!(crate::theme_files::from_value(&malformed).is_err(), "{malformed}");
+            let before = app.preferences.clone();
+            let error = control(&mut app, &json!({"custom_themes":[malformed],"ui_scale":1.5,"open":"Interface"})).unwrap_err();
+            assert!(error.contains("custom_themes[0]"), "{error}");
+            assert_eq!(app.preferences, before);
+            assert!(!app.prefs_window.open);
+
+            let mut restored = SolveApp::new(solidcraft_engine::Session::default(), crate::Services::default());
+            restored.load_prefs(
+                &json!({"preferences":{
+                    "custom_themes":[malformed,other],"theme":"options-a","zoom_reverse":true,
+                    "theme_options":{"options-a":{"amount":99}}
+                }})
+                .to_string(),
+            );
+            assert_eq!(restored.preferences.custom_themes.len(), 2);
+            assert!(restored.preferences.custom_themes[0].options.is_empty());
+            assert!(restored.preferences.custom_themes[0].overlays.is_empty());
+            assert_eq!(restored.preferences.custom_themes[0].colors, restored.preferences.custom_themes[1].colors);
+            assert!(!restored.preferences.custom_themes[1].options.is_empty());
+            assert!(restored.preferences.zoom_reverse);
+            apply(&mut restored, &egui::Context::default());
+            assert_eq!(
+                resolved_theme(&restored.preferences, &restored.preferences.custom_themes[0]).panel,
+                egui::Color32::from_rgb(0x11, 0x22, 0x33)
+            );
+            let out = control(&mut restored, &json!({"ui_scale":1.25})).unwrap();
+            assert_eq!(out["theme_option_defs"], json!([]));
+            assert_eq!(out["theme_option_values"], json!({}));
+            assert_eq!(out["theme_options"]["options-a"]["amount"], 99);
+            assert!(restored.preferences.zoom_reverse);
+        }
+
+        // Reserved fields ignored by import must also be ignored before serde sees an update.
+        source["options"][3] = json!({"id":"blur","type":"range","default":999,"step":null,"unit":false,"label":null,"advanced":"ignored"});
+        let expected = crate::theme_files::from_value(&source).unwrap();
+        control(&mut app, &json!({"custom_themes":[source],"theme":"options-a"})).unwrap();
+        assert_eq!(app.preferences.custom_themes, [expected]);
+        app.preferences.custom_themes[0].options[1].kind =
+            crate::theme_files::OptionKind::Range { default: 5.0, min: 10.0, max: 0.0, step: 1.0, unit: None };
+        let out = control(&mut app, &json!({"ui_scale":1.25})).unwrap();
+        assert_eq!(out["theme_option_defs"], json!([]));
+        assert_eq!(app.preferences.custom_themes[0].colors["panel"], "#112233");
+    }
+
+    #[test]
+    fn theme_options_persist_isolate_reset_remove_and_export_definitions() {
+        let mut h = crate::scenario::Harness::new();
+        let out =
+            control(&mut h.app, &json!({"theme_import":option_theme_file("Options A"), "theme_options":{"options-a":{"enabled":true,"amount":7.5}}}))
+                .unwrap();
+        assert_eq!(out["theme_option_values"]["enabled"], true);
+        h.frames(2);
+        assert_eq!(Tokens::get().panel, egui::Color32::from_rgb(0xab, 0xcd, 0xef));
+        control(&mut h.app, &json!({"theme_import":option_theme_file("Options B"), "theme_options":{"options-b":{"amount":3}}})).unwrap();
+        assert_eq!(control(&mut h.app, &json!({})).unwrap()["theme_option_values"]["enabled"], false);
+        let out = control(&mut h.app, &json!({"theme":"options-a", "theme_export":true})).unwrap();
+        assert_eq!(out["theme_option_values"]["amount"], 7.5);
+        assert_eq!(out["theme_file"]["options"][0]["default"], false);
+        assert_eq!(out["theme_file"]["colors"]["panel"], "#112233");
+        assert_eq!(out["theme_file"]["overlays"][0]["colors"]["panel"], "#abcdef");
+        let mut other = SolveApp::new(solidcraft_engine::Session::default(), crate::Services::default());
+        other.load_prefs(&h.app.prefs());
+        assert_eq!(other.preferences.theme_options, h.app.preferences.theme_options);
+        control(&mut other, &json!({"theme_options":{"options-a":{"amount":null}}})).unwrap();
+        assert_eq!(control(&mut other, &json!({})).unwrap()["theme_option_values"]["amount"], 5.0);
+        assert!(other.preferences.theme_options["options-a"].contains_key("enabled"));
+        control(&mut other, &json!({"theme_options":{"options-a":{}}})).unwrap();
+        assert!(!other.preferences.theme_options.contains_key("options-a"));
+        assert!(other.preferences.theme_options.contains_key("options-b"));
+        control(&mut h.app, &json!({"theme_remove":"options-a"})).unwrap();
+        assert!(!h.app.preferences.theme_options.contains_key("options-a"));
+        assert!(h.app.preferences.theme_options.contains_key("options-b"));
+        control(&mut other, &json!({"open":"Interface", "button":"defaults"})).unwrap();
+        assert!(other.preferences.theme_options.is_empty());
+        h.frames(2);
+        assert_eq!(Tokens::get().panel, Tokens::dark().panel);
+        control(
+            &mut h.app,
+            &json!({"theme_import":option_theme_file("Options A"),"theme_options":{"options-a":{"enabled":true}},"open":"Interface"}),
+        )
+        .unwrap();
+        control(&mut h.app, &json!({"button":"apply"})).unwrap();
+        control(&mut h.app, &json!({"button":"defaults"})).unwrap();
+        h.frames(2);
+        assert!(h.app.preferences.theme_options.is_empty());
+        assert_eq!(Tokens::get().panel, Tokens::dark().panel);
+        control(&mut h.app, &json!({"button":"cancel"})).unwrap();
+        h.frames(2);
+        assert_eq!(Tokens::get().panel, egui::Color32::from_rgb(0xab, 0xcd, 0xef));
+    }
+
+    #[test]
+    fn theme_options_saved_invalid_values_survive_with_defaults_and_notices() {
+        let mut h = crate::scenario::Harness::new();
+        control(&mut h.app, &json!({"theme_import":option_theme_file("Options A")})).unwrap();
+        let mut saved = serde_json::to_value(&h.app.preferences).unwrap();
+        saved["theme_options"] =
+            json!({"options-a":{"enabled":[], "amount":99, "style":"dropped", "removed":{"future":true}}, "unknown-theme":{"anything":null}});
+        saved["zoom_reverse"] = json!(true);
+        saved["ui_scale"] = json!("bad saved field");
+        h.app.preferences = lenient(&saved);
+        assert!(h.app.preferences.zoom_reverse);
+        let out = control(&mut h.app, &json!({"look_at_anim":false})).unwrap();
+        assert_eq!(out["theme_options"], saved["theme_options"]);
+        assert_eq!(out["theme_option_values"], json!({"enabled":false,"amount":5.0,"style":"warm","blur":0.0}));
+        assert_eq!(
+            out["theme_option_notices"],
+            json!([
+                {"id":"amount","kind":"out_of_range"}, {"id":"enabled","kind":"wrong_type"},
+                {"id":"removed","kind":"unknown_option"}, {"id":"style","kind":"unknown_choice"}
+            ])
+        );
+        let mut other = SolveApp::new(solidcraft_engine::Session::default(), crate::Services::default());
+        other.load_prefs(&h.app.prefs());
+        assert_eq!(other.preferences.theme_options, h.app.preferences.theme_options);
+        assert!(other.preferences.zoom_reverse);
+    }
+
+    #[test]
+    fn theme_options_control_refuses_entire_mixed_call_before_side_effects() {
+        let mut h = crate::scenario::Harness::new();
+        control(&mut h.app, &json!({"theme_import":option_theme_file("Options A")})).unwrap();
+        h.app.stand_up = Some(vec!["Offered".into()]);
+        h.app.stand_up_note = true;
+        let before = h.app.prefs();
+        for (options, key) in [
+            (json!({"unknown":{"enabled":true}}), "theme_options.unknown"),
+            (json!({"options-a":{"unknown":true}}), "theme_options.options-a.unknown"),
+            (json!({"options-a":{"enabled":1}}), "theme_options.options-a.enabled"),
+            (json!({"options-a":{"amount":10.0000001}}), "theme_options.options-a.amount"),
+            (json!({"options-a":{"amount":-1}}), "theme_options.options-a.amount"),
+            (json!({"options-a":{"style":"missing"}}), "theme_options.options-a.style"),
+            (json!({"options-a":{"amount":8,"enabled":{}},"options-b":{"enabled":true}}), "theme_options.options-a.enabled"),
+        ] {
+            let err = control(
+                &mut h.app,
+                &json!({
+                    "theme_import":option_theme_file("Options B"), "theme_options":options,
+                    "theme":"options-b", "theme_follow":"", "open":"Interface", "button":"defaults", "stand_up":false,
+                    "msaa":4, "default_units":"inch", "up_axis":"y", "ui_scale":1.5
+                }),
+            )
+            .unwrap_err();
+            assert!(err.contains(key), "{err}");
+            assert_eq!(h.app.prefs(), before, "{key}");
+            assert!(!h.app.prefs_window.open && h.app.prefs_window.snapshot.is_none());
+            assert_eq!(h.app.stand_up.as_deref(), Some(["Offered".to_string()].as_slice()));
+            assert!(h.app.stand_up_note);
+        }
+        let err = control(&mut h.app, &json!({"theme_remove":"options-a", "theme_options":{"options-a":{}}})).unwrap_err();
+        assert!(err.contains("theme_options.options-a"));
+        assert_eq!(h.app.prefs(), before);
+        assert!(control(&mut h.app, &json!({"theme_options":{"options-a":{"enabled":true}},"ui_scale":9})).is_err());
+        assert_eq!(h.app.prefs(), before);
+        assert!(control(&mut h.app, &json!({"theme_import":option_theme_file("Options B"),"button":"invalid"})).is_err());
+        assert_eq!(h.app.prefs(), before);
+        assert!(control(&mut h.app, &json!({"theme_options":null})).is_err());
+    }
+
+    #[test]
+    fn theme_options_active_reply_is_localized_ordered_and_matches_schema_types() {
+        use solidcraft_engine::schema::ui_prefs::{PrefsReply, ThemeOptionKind};
+        let mut h = crate::scenario::Harness::new();
+        let out = control(&mut h.app, &json!({"theme_import":option_theme_file("Options A"), "language":"de"})).unwrap();
+        let reply: PrefsReply = serde_json::from_value(out.clone()).unwrap();
+        assert_eq!(reply.options.theme_option_defs.iter().map(|o| o.id.as_str()).collect::<Vec<_>>(), ["blur", "enabled", "amount", "style"]);
+        let defs = &reply.options.theme_option_defs;
+        assert!(defs[0].standard && !defs[0].available);
+        assert_eq!(defs[0].reason.as_deref(), Some("not implemented"));
+        assert_eq!((&defs[1].label, &defs[1].help), (&"Aktiv".to_string(), &"Farben verwenden".to_string()));
+        assert!(defs[1].available && defs[1].reason.is_none());
+        assert!(defs[2].advanced && defs[2].section.as_deref() == Some("Details"));
+        let ThemeOptionKind::Choice { values, .. } = &defs[3].kind else { panic!("choice definition") };
+        assert_eq!(values.iter().map(|v| v.label.as_str()).collect::<Vec<_>>(), ["Warmton", "Cool"]);
+        assert_eq!(serde_json::to_value(reply).unwrap(), out);
+        let out = control(&mut h.app, &json!({"theme":"dark"})).unwrap();
+        assert_eq!(out["theme_option_defs"], json!([]));
+        assert_eq!(out["theme_option_values"], json!({}));
+        assert_eq!(out["theme_option_notices"], json!([]));
+    }
+
+    #[test]
+    fn theme_options_followed_file_uses_its_id_and_reload_keeps_saved_entries() {
+        let mut h = crate::scenario::Harness::new();
+        let path = h.dir.join("follow-options.json");
+        let mut file = option_theme_file("Follow Options");
+        file["base"] = json!("light");
+        std::fs::write(&path, file.to_string()).unwrap();
+        let out = control(&mut h.app, &json!({"theme_follow":path, "theme_options":{"file-follow-options":{"enabled":true,"amount":8}}})).unwrap();
+        assert_eq!(out["theme"], "dark");
+        assert_eq!(out["theme_option_values"]["enabled"], true);
+        h.frames(2);
+        assert_eq!(Tokens::get().panel, egui::Color32::from_rgb(0xab, 0xcd, 0xef));
+        assert!(!h.app.ui.dark);
+        let saved = h.app.prefs();
+        let err = control(&mut h.app, &json!({"theme":"light", "theme_options":{"missing":{}}, "stand_up":false})).unwrap_err();
+        assert!(err.contains("theme_options.missing"));
+        assert_eq!(h.app.prefs(), saved);
+        assert_eq!(active_theme_file(&h.app).unwrap().id, "file-follow-options");
+        let other_path = h.dir.join("other-options.json");
+        std::fs::write(&other_path, option_theme_file("Other Options").to_string()).unwrap();
+        let err = control(&mut h.app, &json!({"theme_follow":other_path,"theme_options":{"file-other-options":{"enabled":42}}})).unwrap_err();
+        assert!(err.contains("theme_options.file-other-options.enabled"), "{err}");
+        assert_eq!(h.app.prefs(), saved);
+        assert_eq!(active_theme_file(&h.app).unwrap().id, "file-follow-options");
+        file["options"][1]["max"] = json!(6);
+        file["options"][1]["default"] = json!(2);
+        std::fs::write(&path, file.to_string()).unwrap();
+        let out = control(&mut h.app, &json!({"theme_follow":path, "theme_export":true})).unwrap();
+        assert_eq!(out["theme_option_values"]["amount"], 2.0);
+        assert_eq!(out["theme_options"]["file-follow-options"]["amount"], 8);
+        assert_eq!(out["theme_option_notices"], json!([{"id":"amount","kind":"out_of_range"}]));
+        assert_eq!(out["theme_file"]["name"], "Follow Options");
+        assert_eq!(out["theme_file"]["options"][1]["default"], 2.0);
+        std::fs::write(&path, "incomplete").unwrap();
+        let out = control(&mut h.app, &json!({"theme_follow":path})).unwrap();
+        assert!(out["theme_follow_error"].is_string());
+        assert_eq!(out["theme_option_values"]["enabled"], true);
+        let out = control(&mut h.app, &json!({"theme_follow":""})).unwrap();
+        assert_eq!(out["dark"], true);
+        assert!(active_theme_file(&h.app).is_none());
+        h.frames(2);
+        assert_eq!(Tokens::get().panel, Tokens::dark().panel);
+        let out = control(&mut h.app, &json!({"theme_follow":path})).unwrap();
+        assert_eq!(out["theme_option_values"], json!({}), "stopping clears the last good file");
+        control(&mut h.app, &json!({"theme_follow":""})).unwrap();
+        std::fs::write(&path, file.to_string()).unwrap();
+        follow_theme_file_for_run(&mut h.app, path.to_str().unwrap()).unwrap();
+        h.frames(2);
+        let out = control(&mut h.app, &json!({})).unwrap();
+        assert_eq!(out["theme_follow"], "");
+        assert_eq!(out["theme_option_values"]["enabled"], true);
+        assert_eq!(Tokens::get().panel, egui::Color32::from_rgb(0xab, 0xcd, 0xef));
+        assert!(!h.app.ui.dark);
+        let saved = h.app.prefs();
+        let launch = h.app.prefs_window.follow.launch.clone();
+        assert!(control(&mut h.app, &json!({"theme":"dark","theme_options":{"missing":{}}})).is_err());
+        assert_eq!(h.app.prefs(), saved);
+        assert_eq!(h.app.prefs_window.follow.launch, launch);
+        assert_eq!(active_theme_file(&h.app).unwrap().id, "file-follow-options");
+        let out = control(&mut h.app, &json!({"theme":"dark"})).unwrap();
+        assert_eq!(out["dark"], true);
+        assert!(out["theme_followed"].is_null());
+        assert!(h.app.prefs_window.follow.theme().is_none());
+        h.frames(2);
+        assert_eq!(Tokens::get().panel, Tokens::dark().panel);
     }
 
     #[test]

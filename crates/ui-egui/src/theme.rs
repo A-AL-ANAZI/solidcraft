@@ -286,6 +286,32 @@ pub(crate) fn contrast_ratio(a: Color32, b: Color32) -> f64 {
     (a.max(b) + 0.05) / (a.min(b) + 0.05)
 }
 
+/// Composite a translucent foreground over an opaque background in sRGB for contrast checks.
+pub(crate) fn composite(fill: Color32, background: Color32) -> Color32 {
+    let rgb = fill.to_srgba_unmultiplied();
+    let a = f64::from(rgb[3]) / 255.0;
+    let channel = |index: usize| (f64::from(rgb[index]) * a + f64::from(background[index]) * (1.0 - a)).round() as u8;
+    Color32::from_rgb(channel(0), channel(1), channel(2))
+}
+
+fn readable_fill(fill: Color32, inks: &[Color32], scale: f32) -> Color32 {
+    let [r, g, b, alpha] = fill.to_srgba_unmultiplied();
+    let requested = (f32::from(alpha) * scale).round() as u8;
+    // At most 256 cheap colour comparisons per changed role; no allocations, GPU or I/O.
+    for a in requested..=255 {
+        let candidate = Color32::from_rgba_unmultiplied(r, g, b, a);
+        if [Color32::BLACK, Color32::WHITE].iter().all(|background| {
+            let ground = composite(candidate, *background);
+            inks.iter().all(|ink| contrast_ratio(composite(*ink, ground), ground) >= 4.5)
+        }) {
+            return candidate;
+        }
+    }
+    // An authored foreground may already fail at full opacity. Never alter that foreground;
+    // full alpha gives it the strongest protection this option can supply.
+    Color32::from_rgb(r, g, b)
+}
+
 impl TabAccent {
     pub fn for_tab(t: &Tokens, tab: &str) -> Self {
         let (color, ink, soft) = match tab {
@@ -896,6 +922,21 @@ impl Tokens {
     /// reads on the view's background. As [`Tokens::get`] unless the view has its own side.
     pub fn view() -> Tokens {
         Tokens::themed(viewport_dark(), vision()).with_background(viewport_background())
+    }
+
+    /// Scale only floating surface fill alpha, preserving full-opacity tokens exactly.
+    /// Raise each fill's floor to protect text over both black and white viewport extremes.
+    pub(crate) fn apply_panel_opacity(&mut self, percent: f32) {
+        if !percent.is_finite() || percent >= 100.0 {
+            return;
+        }
+        let scale = percent.clamp(40.0, 100.0) / 100.0;
+        let body_inks = [self.text, self.form_ink, self.dialog_label];
+        for fill in [&mut self.panel, &mut self.panel_header, &mut self.dialog_bg, &mut self.dialog_body, &mut self.dialog_footer, &mut self.overlay]
+        {
+            *fill = readable_fill(*fill, &body_inks, scale);
+        }
+        self.nav_tip = readable_fill(self.nav_tip, &[self.nav_tip_ink], scale);
     }
 
     /// These tokens with the 3D view's background one flat colour (#7688), or as they are for `None`.

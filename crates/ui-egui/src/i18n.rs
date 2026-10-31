@@ -277,6 +277,26 @@ thread_local! {
     // Helpers without an app reference share a render scope. Nested renders restore
     // their caller's locale; no owned language strings or persistent global setting.
     static CURRENT: Cell<Locale> = const { Cell::new(Locale(&ENGLISH)) };
+    /// Theme-authored language maps are already resolved and are not catalog source labels.
+    static RESOLVED_LABELS: Cell<bool> = const { Cell::new(false) };
+}
+
+#[must_use]
+pub(crate) struct ResolvedLabels {
+    previous: bool,
+    _thread: std::marker::PhantomData<std::rc::Rc<()>>,
+}
+
+/// Shared controls can render supplied translations verbatim while retaining catalog messages.
+pub(crate) fn resolved_labels() -> ResolvedLabels {
+    let previous = RESOLVED_LABELS.with(|labels| labels.replace(true));
+    ResolvedLabels { previous, _thread: std::marker::PhantomData }
+}
+
+impl Drop for ResolvedLabels {
+    fn drop(&mut self) {
+        RESOLVED_LABELS.with(|labels| labels.set(self.previous));
+    }
 }
 
 #[must_use]
@@ -306,7 +326,7 @@ pub fn tr(id: &str) -> &str {
     CURRENT.with(|current| current.get().text(id))
 }
 pub fn tr_label(label: &str) -> &str {
-    CURRENT.with(|current| current.get().label(label))
+    if RESOLVED_LABELS.with(Cell::get) { label } else { CURRENT.with(|current| current.get().label(label)) }
 }
 
 /// Every English catalog entry `(id, text)`, for Preferences search to match a translation
@@ -331,6 +351,24 @@ pub fn tr_diagnostic(text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn theme_options_resolved_labels_are_verbatim_and_restore_catalog_adapters() {
+        let _language = super::scope("de");
+        assert_eq!(super::tr_label("Profile"), "Profil");
+        {
+            let _labels = super::resolved_labels();
+            assert_eq!(super::tr_label("Profile"), "Profile");
+            assert_eq!(super::tr_label("ui.cancel"), "ui.cancel");
+            assert_ne!(super::tr("ui.cancel"), "ui.cancel", "stable catalog messages remain translated");
+            {
+                let _nested = super::resolved_labels();
+                assert_eq!(super::tr_label("Profile"), "Profile");
+            }
+            assert_eq!(super::tr_label("Profile"), "Profile");
+        }
+        assert_eq!(super::tr_label("Profile"), "Profil");
+    }
+
     use super::*;
 
     /// Strings a pull request adds under `assets/locales/pending/` work before they are folded

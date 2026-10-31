@@ -285,6 +285,7 @@ mod sweep_dialog_tests;
 pub(crate) mod test_boat;
 pub mod theme;
 pub mod theme_files;
+mod theme_options;
 #[cfg(test)]
 mod thin_extrude_tests;
 pub mod timeline;
