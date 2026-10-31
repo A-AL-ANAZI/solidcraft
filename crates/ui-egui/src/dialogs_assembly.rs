@@ -1510,6 +1510,105 @@ pub fn pick_joint(app: &mut SolveApp, id: u64, add: bool) {
     }
 }
 
+/// A placement's Joints folder (#9130): the design's joints that attach this placement (it is
+/// one of the two they join), each beside the placement it joins this one to. The rows are the
+/// same joints as the root Joints folder's and act the same: a click picks the joint, a
+/// double-click edits it, the eye shows or hides its glyph and the menu is the joint's menu.
+/// The folder starts closed and has no eye of its own (the root folder's eye hides every joint
+/// glyph); it isn't drawn for a placement no joint attaches. `key` is the placement's row key.
+pub fn component_joints(app: &mut SolveApp, ui: &mut egui::Ui, path: &[u64], key: &str, depth: usize) {
+    use crate::browser::{Row, draw_row, is_open, toggle};
+    let joints = placement_joints(&app.session.doc, path);
+    if joints.is_empty() {
+        return;
+    }
+    let key = format!("{key}/joints");
+    let open = is_open(app, &key, false);
+    let r = draw_row(ui, ui.id().with(&key), &Row { depth, fold: Some(open), icon: "folder", label: "Joints", ..Default::default() });
+    if r.fold || r.clicked {
+        toggle(app, &key, false);
+    }
+    if !open {
+        return;
+    }
+    // Hiding the root folder hides every glyph: these rows fade with it, as its own rows do.
+    let folder_shown = !app.session.folder_hidden("c0/joints");
+    let mut dialog: Option<Dialog> = None;
+    for j in joints {
+        let id = j.id;
+        let visible = app.session.joint_visible(id);
+        let selected = app.tree.picked_joints.contains(&id);
+        let r = draw_row(
+            ui,
+            ui.id().with((&key, "joint", id)),
+            &Row {
+                depth: depth + 1,
+                eye: Some(visible),
+                icon: "joint",
+                label: &j.name,
+                secondary: &j.other,
+                name: true,
+                selected,
+                dim: j.suppressed || !visible || !folder_shown,
+                ..Default::default()
+            },
+        );
+        if let Some(resp) = &r.resp {
+            resp.clone().on_hover_text(format!("{:?} joint", j.kind));
+        }
+        if r.eye {
+            let _ = app.run("browser.visibility", json!({ "joints": [id], "visible": !visible }));
+        } else if r.clicked {
+            pick_joint(app, id, ui.input(|i| i.modifiers.command || i.modifiers.ctrl));
+        }
+        if r.double {
+            dialog = edit_joint(app, id);
+        }
+        if let Some(at) = r.secondary {
+            if !app.tree.picked_joints.contains(&id) {
+                pick_joint(app, id, false);
+            }
+            crate::context_menu::open_for(app, at, crate::context_menu::Target::Joint { id });
+        }
+    }
+    if let Some(d) = dialog {
+        app.tool = None;
+        app.dialog = Some(d);
+    }
+}
+
+/// A joint as a placement's Joints folder lists it.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct PlacementJoint {
+    pub id: u64,
+    pub name: String,
+    pub kind: JointKind,
+    pub suppressed: bool,
+    /// The name of the placement the joint joins this one to (empty when there is none).
+    pub other: String,
+}
+
+/// The joints that attach the placement at `path` (its last occurrence is one of the two a
+/// joint joins), in the design's joint order.
+pub(crate) fn placement_joints(doc: &solidcraft_engine::doc::Document, path: &[u64]) -> Vec<PlacementJoint> {
+    let Some(&occ) = path.last() else { return Vec::new() };
+    let name_of = |o: u64| doc.occurrences.iter().find(|x| x.id == o).map(|x| x.name.clone()).unwrap_or_default();
+    doc.assembly
+        .joints
+        .iter()
+        .filter_map(|j| {
+            let other = if j.a.occurrence == occ {
+                j.b.occurrence
+            } else if j.b.occurrence == occ {
+                j.a.occurrence
+            } else {
+                return None;
+            };
+            Some(PlacementJoint { id: j.id, name: j.name.clone(), kind: j.kind, suppressed: j.suppressed, other: name_of(other) })
+        })
+        .collect()
+}
+
 #[cfg(test)]
 #[path = "dialogs_assembly_tests.rs"]
 mod tests;
