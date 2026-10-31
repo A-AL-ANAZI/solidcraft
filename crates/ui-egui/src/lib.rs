@@ -609,6 +609,9 @@ pub struct SolveApp {
     /// The bodies (or components) the last copy or cut took, with the design they were in, to
     /// paste into another design (`component.paste_from_design`).
     pub foreign_copy: Option<std::sync::Arc<solidcraft_engine::ForeignCopy>>,
+    /// The sketch geometry the last copy or cut took, when it was sketch geometry: a sketch of
+    /// another design pastes it (#9258).
+    pub foreign_sketch_clip: Option<solidcraft_engine::cmd::sketch_clipboard::SketchClip>,
     /// Esc was already acted on this frame (by the shortcuts), so later handlers skip it.
     pub esc_handled: bool,
     pub(crate) escape_owner: Option<EscapeOwner>,
@@ -813,6 +816,7 @@ impl SolveApp {
             clipboard_stamp: 0,
             own_clipboard_stamp: 0,
             foreign_copy: None,
+            foreign_sketch_clip: None,
             esc_handled: false,
             escape_owner: None,
             last_escape: None,
