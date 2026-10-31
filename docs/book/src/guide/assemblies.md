@@ -465,6 +465,8 @@ description; **Change Part Size** renumbers them, keeping a field you changed yo
   under it as `children` (items 1.1, 1.2…, with `each` per bolt and `count` in all) instead of
   rows of their own. Bolts with different contents (one with a nut, one without) are different
   rows. `total_occurrences` counts the children too, so it is the same either way.
+  For an inseparable part, only its purchased descendants become children; a purchased part
+  still has no children listed. Parts without a part number are not grouped this way.
 - `component` lists one subassembly's parts instead of the design's.
 
 A component's **bill of materials type** (`bom_type`, a part property set with
