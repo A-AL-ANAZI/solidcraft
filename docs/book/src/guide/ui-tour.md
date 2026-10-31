@@ -292,6 +292,103 @@ Command icons use the shared SVG palette.
 Imported themes are kept with your preferences, so they work in the browser app too. Colour
 vision modes still apply on top of any theme.
 
+#### Theme-file options and overlays
+
+Theme authors can add `options` and `overlays` to `solidcraft-theme/1`. This is a file-format
+and resolver API; this version has no controls for changing or saving option values. Import
+uses the declared defaults. Existing files need no changes, and **Export…** still writes a
+complete snapshot of the resolved colours, radii, borders and icon palette.
+
+For example, add these two keys alongside a theme's `colors`:
+
+```json
+{
+  "options": [
+    {
+      "id": "warm_accent",
+      "type": "bool",
+      "default": true,
+      "label": {"en": "Warm accent"},
+      "help": {"en": "Use a warmer accent colour."}
+    },
+    {
+      "id": "rounding",
+      "type": "range",
+      "default": 4,
+      "min": 0,
+      "max": 12,
+      "step": 1,
+      "unit": "pt",
+      "parent": "warm_accent"
+    }
+  ],
+  "overlays": [
+    {
+      "when": {"opt": "warm_accent", "eq": true},
+      "colors": {"accent": "#cc7744"}
+    },
+    {
+      "when": {"opt": "rounding", "gte": 4, "lte": 12},
+      "radii": {"control_radius": 8}
+    }
+  ]
+}
+```
+
+A file can declare up to 16 options. Each `id` is unique and matches
+`[a-z][a-z0-9_]{0,31}`. Every option has a `type` and `default`:
+
+- `bool`: the default is `true` or `false`.
+- `choice`: `values` contains 2 to 12 entries, each with a unique `id` in the same syntax
+  and a localized `label` map, for example `{"id":"warm","label":{"en":"Warm"}}`.
+  The default names one of those ids.
+- `range`: finite numeric `min`, `max` and positive `step` are required, with `min` no larger
+  than `max` and the default inside those bounds. Optional `unit` has at most 4 characters.
+  Numbers must fit a finite 32-bit float. Saved values are clamped to the bounds; `step`
+  is an increment for future controls, not a rounding rule.
+
+Optional `label` and `help` maps use language codes as keys, with `en` as the fallback.
+Labels have at most 40 characters and help strings at most 160, per language. Each map
+supports up to 64 language codes, each at most 32 ASCII letters, digits, hyphens or underscores.
+These texts belong to the theme and need no application catalog entries. `advanced` is an
+optional boolean; `section` is an optional string of at most 24 characters. `parent` names
+a declared boolean option, with at most one child per parent and no cycles. While the
+parent is off, overlays referring to the child are inactive; the child's value is retained.
+
+Four ids are reserved for definitions owned by the app:
+
+| Id | Type | Bounds | Unit | Parent |
+|---|---|---|---|---|
+| `opacity` | range | 40–100 | `%` | — |
+| `blur` | range | 0–40 | `px` | — |
+| `tab_colours` | bool | — | — | — |
+| `tab_fade_ms` | range | 0–600 | `ms` | `tab_colours` |
+
+A theme declares these with their required type and a default; it may also narrow a range's
+`min` and `max`. The default is clamped to those bounds. Other fields are ignored, including
+presentation text, `step` (fixed at 1 for standard ranges), unit and parent. A wrong type or
+bounds outside the standard range are import errors. Declaring `tab_fade_ms` also requires
+declaring its boolean parent, `tab_colours`. Custom options cannot redefine reserved ids.
+These declarations alone do not change opacity, blur or tab behaviour in this version.
+The resolver exposes declared standard options in the order `opacity`, `blur`, `tab_colours`,
+each immediately followed by its child, then custom options in declared order.
+
+Up to 32 overlays apply in file order, after the base palette and the theme's own value tables.
+Later matching entries win by key. Every overlay has one `when`: `{"opt":"id","eq":value}`
+for an exact, correctly typed comparison, or `gte`, `lte`, or both for inclusive range bounds.
+A choice comparison must name a declared choice. Unknown option ids, mixed comparisons and
+malformed values are refused with the overlay's one-based position. An overlay may override
+`colors`, `radii`, `borders` and `icon_palette`; all their existing key and value checks apply.
+Overlays only select literal tables: there are no scripts, expressions or interpolation.
+
+The optional integer `requires` defaults to 1, this app's supported level. A larger level
+loads the authored base value tables, disables options and overlays, and exposes a
+`needs_newer` flag through the theme API for future UI. The theme-definition API can export
+options and overlays intact; the existing token snapshot export keeps its previous shape.
+The value resolver reports notices for unknown saved ids, wrong types, unknown choices,
+non-finite numbers and clamped values. Invalid saved values for declared options fall back to defaults;
+unknown saved ids are omitted because they have no definition or default.
+
 #### Follow a theme file
 
 In the desktop app, **Follow a theme file** (under the themes) takes a theme file that another
