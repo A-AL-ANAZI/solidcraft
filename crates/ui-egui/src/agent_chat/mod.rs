@@ -936,6 +936,11 @@ pub fn connect(app: &mut SolveApp, ctx: &egui::Context) {
     } else if cli.is_none() {
         chat.notice(tr("ui.agent_chat_no_cli"), true);
     }
+    // Found, but it failed when asked its version (#9034): say why and how to reinstall it before
+    // the system's own message arrives. It is still started, in case it only lacks `--version`.
+    if let Some(hint) = entry.problem_hint() {
+        chat.notice(hint, true);
+    }
     let bridge = cli.zip(chat.tools_port).map(|(cli, port)| acp::McpBridge { cli, port });
     chat.tools_available = Some(bridge.is_some());
     let wake = ctx.clone();
@@ -2225,7 +2230,7 @@ pub fn status(app: &SolveApp) -> Value {
     #[cfg(not(target_arch = "wasm32"))]
     let detection = c.detection.as_ref().map(|d| {
         json!({
-            "found": d.found.iter().map(|f| json!({"id": f.id, "name": f.name, "argv": f.argv, "version": f.version, "login": f.login.id()})).collect::<Vec<_>>(),
+            "found": d.found.iter().map(|f| json!({"id": f.id, "name": f.name, "argv": f.argv, "version": f.version, "login": f.login.id(), "problem": f.problem})).collect::<Vec<_>>(),
             "missing": d.missing.iter().map(|m| json!({"id": m.id, "install": m.install})).collect::<Vec<_>>(),
             "ms": d.took_ms,
         })
@@ -2242,7 +2247,7 @@ pub fn status(app: &SolveApp) -> Value {
         "openAtStart": app.preferences.agent_chat_open_at_start,
         "lastAgent": app.preferences.agent_last,
         "permissions": app.preferences.ai_permissions.id(),
-        "agents": agents::entries(app).iter().map(|e| json!({"id": e.id, "name": e.name, "kind": e.kind.id(), "found": e.found, "version": e.version, "login": e.login, "request_timeout_s": e.kind.is_api().then_some(e.request_timeout_s)})).collect::<Vec<_>>(),
+        "agents": agents::entries(app).iter().map(|e| json!({"id": e.id, "name": e.name, "kind": e.kind.id(), "found": e.found, "version": e.version, "login": e.login, "problem": e.problem, "request_timeout_s": e.kind.is_api().then_some(e.request_timeout_s)})).collect::<Vec<_>>(),
         "currentAgent": agents::current(app).map(|e| e.id),
         "models": c.models.iter().map(|m| json!({"id": m.id, "name": m.name, "description": m.description})).collect::<Vec<_>>(),
         "model": c.model,

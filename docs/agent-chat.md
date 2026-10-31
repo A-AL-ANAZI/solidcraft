@@ -187,7 +187,12 @@ doesn't change the last known login state.
 | GitHub Copilot CLI, Qwen Code, goose | listed with their install command when missing |
 
 The panel lists agents that aren't installed with their install command and a **Copy** button.
-**Refresh** looks again after you install one. **Test** starts an agent briefly, asks it for a
+**Refresh** looks again after you install one. An agent whose program is there but fails its
+`--version` check without printing a version (an install that didn't finish, such as an npm
+install whose setup script didn't run, or a program built for another kind of computer) is
+still listed, marked **does not start** with the system's reason. Connecting to it first says
+why and gives its install command; reinstall it until `--version` works in a terminal, then
+press **Refresh**. A check that runs out of time is not counted as a failure. **Test** starts an agent briefly, asks it for a
 session and ends it again.
 
 ### Flatpak

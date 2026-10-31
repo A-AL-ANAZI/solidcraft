@@ -711,6 +711,8 @@ pub fn dialog(app: &mut SolveApp, ctx: &egui::Context) {
                 model: s.model.trim().to_string(),
                 key: false,
                 request_timeout_s: s.request_timeout_s,
+                problem: None,
+                install: "",
             };
             let key = Some(s.key.trim().to_string()).filter(|k| !k.is_empty());
             let result = match url {

@@ -17,6 +17,8 @@ fn app_with_discovered_login() -> SolveApp {
             argv: vec!["qwen".into(), "--acp".into()],
             version: None,
             login: discover::Login::LooksLoggedIn,
+            problem: None,
+            install: "npm install -g @qwen-code/qwen-code",
         }],
         ..Default::default()
     });
@@ -2434,6 +2436,34 @@ fn a_connection_that_never_gets_ready_says_connection_failed_and_offers_retry() 
     connect(&mut app, &ctx);
     assert_eq!(app.agent_chat.state(), State::Failed);
     assert!(app.preferences.agent_last.is_empty(), "only an agent that started is remembered");
+
+    // A found agent that failed its version check (#9034): the picker says it doesn't start, and
+    // connecting says why and how to install it again, besides the system's own message.
+    let mut app = SolveApp::new(solidcraft_engine::Session::default(), crate::Services::default());
+    let reason = "This version of opencode.exe is not compatible with the version of Windows you're running.";
+    app.agent_chat.detection = Some(discover::Detection {
+        found: vec![discover::Found {
+            id: "opencode",
+            name: "OpenCode",
+            argv: vec!["solidcraft-no-such-agent-9034".into(), "acp".into()],
+            version: None,
+            login: discover::Login::Unknown,
+            problem: Some(reason.into()),
+            install: "npm install -g opencode-ai",
+        }],
+        ..Default::default()
+    });
+    let entry = agents::current(&app).unwrap();
+    assert!(entry.detail().contains(reason), "{}", entry.detail());
+    connect(&mut app, &ctx);
+    assert_eq!(app.agent_chat.state(), State::Failed);
+    let told = |needle: &str| app.agent_chat.items.iter().any(|i| matches!(i, Item::Notice { text, error: true } if text.contains(needle)));
+    assert!(told(reason) && told("npm install -g opencode-ai") && told("OpenCode"), "{:?}", app.agent_chat.items);
+    assert_eq!(status(&app)["agents"][0]["problem"], reason);
+    // One that answered has nothing to say.
+    let mut fine = entry.clone();
+    fine.problem = None;
+    assert_eq!(fine.problem_hint(), None);
 
     // No agent at all: the picker opens on what to install.
     let mut app = SolveApp::new(solidcraft_engine::Session::default(), crate::Services::default());

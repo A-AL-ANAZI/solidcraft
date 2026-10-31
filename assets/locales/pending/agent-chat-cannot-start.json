@@ -1,0 +1,38 @@
+{
+  "en": {
+    "ui.agent_chat_cannot_start": "Installed, but it does not start: {error}",
+    "ui.agent_chat_reinstall": "{agent} is installed ({program}), but it did not start when SolidCraft checked it: {error}\nIts installation may be incomplete, or made for another kind of computer. Install it again with `{install}`, check that it prints its version in a terminal, then press Refresh."
+  },
+  "ar": {
+    "ui.agent_chat_cannot_start": "مثبّت، لكنه لا يبدأ: {error}",
+    "ui.agent_chat_reinstall": "{agent} مثبّت ({program})، لكنه لم يبدأ عندما فحصه SolidCraft: {error}\nقد يكون تثبيته غير مكتمل، أو مُعدًّا لنوع آخر من الحواسيب. ثبّته من جديد بالأمر `{install}`، وتحقّق من أنه يعرض رقم إصداره في الطرفية، ثم اضغط تحديث."
+  },
+  "de": {
+    "ui.agent_chat_cannot_start": "Installiert, startet aber nicht: {error}",
+    "ui.agent_chat_reinstall": "{agent} ist installiert ({program}), ist aber beim Prüfen durch SolidCraft nicht gestartet: {error}\nDie Installation ist vielleicht unvollständig oder für einen anderen Computertyp. Installieren Sie es erneut mit `{install}`, prüfen Sie, dass es im Terminal seine Version ausgibt, und klicken Sie dann auf Aktualisieren."
+  },
+  "fr": {
+    "ui.agent_chat_cannot_start": "Installé, mais ne démarre pas : {error}",
+    "ui.agent_chat_reinstall": "{agent} est installé ({program}), mais n'a pas démarré quand SolidCraft l'a vérifié : {error}\nSon installation est peut-être incomplète, ou prévue pour un autre type d'ordinateur. Réinstallez-le avec `{install}`, vérifiez qu'il affiche sa version dans un terminal, puis cliquez sur Actualiser."
+  },
+  "he": {
+    "ui.agent_chat_cannot_start": "מותקן, אך אינו מופעל: {error}",
+    "ui.agent_chat_reinstall": "{agent} מותקן ({program}), אך לא הופעל כאשר SolidCraft בדק אותו: {error}\nייתכן שההתקנה שלו חלקית, או שהיא מיועדת לסוג אחר של מחשב. יש להתקין אותו מחדש עם `{install}`, לוודא שהוא מציג את הגרסה שלו במסוף, ואז ללחוץ על רענון."
+  },
+  "ja": {
+    "ui.agent_chat_cannot_start": "インストールされていますが、起動しません: {error}",
+    "ui.agent_chat_reinstall": "{agent} はインストールされています ({program}) が、SolidCraft が確認したときに起動しませんでした: {error}\nインストールが不完全か、別の種類のコンピューター用の可能性があります。`{install}` で再インストールし、ターミナルでバージョンが表示されることを確認してから、再検索を押してください。"
+  },
+  "ko": {
+    "ui.agent_chat_cannot_start": "설치되어 있지만 시작되지 않습니다: {error}",
+    "ui.agent_chat_reinstall": "{agent}이(가) 설치되어 있지만({program}) SolidCraft가 확인할 때 시작되지 않았습니다: {error}\n설치가 완료되지 않았거나 다른 종류의 컴퓨터용일 수 있습니다. `{install}`(으)로 다시 설치하고, 터미널에서 버전이 출력되는지 확인한 뒤 새로 고침을 누르세요."
+  },
+  "vi": {
+    "ui.agent_chat_cannot_start": "Đã cài đặt nhưng không khởi động được: {error}",
+    "ui.agent_chat_reinstall": "{agent} đã được cài đặt ({program}) nhưng không khởi động khi SolidCraft kiểm tra: {error}\nBản cài đặt có thể chưa hoàn tất, hoặc dành cho loại máy tính khác. Hãy cài lại bằng `{install}`, kiểm tra rằng nó in ra phiên bản trong terminal, rồi nhấn Làm mới."
+  },
+  "zh": {
+    "ui.agent_chat_cannot_start": "已安装，但无法启动：{error}",
+    "ui.agent_chat_reinstall": "{agent} 已安装（{program}），但 SolidCraft 检查时它没有启动：{error}\n它的安装可能不完整，或是为另一种计算机准备的。请用 `{install}` 重新安装，确认它能在终端中显示版本号，然后点击刷新。"
+  }
+}
