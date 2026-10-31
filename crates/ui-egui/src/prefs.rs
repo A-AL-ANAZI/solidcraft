@@ -2053,7 +2053,10 @@ pub fn apply(app: &mut SolveApp, ctx: &egui::Context) {
     // A theme file's palette, in place of its base's (dark or light); the visuals follow. A
     // followed file (#7573) wins while it is followed and has read completely once.
     follow_theme_file(app, ctx);
-    let custom = active_theme_file(app).map(|f| crate::theme::Custom { dark: f.base.is_dark(), tokens: resolved_theme(&app.preferences, f) });
+    let file = active_theme_file(app);
+    let custom = crate::theme::prepare_tabs(ctx, file, file.and_then(|f| app.preferences.theme_options.get(&f.id)), || {
+        file.map(|f| effective_theme_options(&app.preferences, f).0).unwrap_or_default()
+    });
     if let Some(custom) = &custom {
         app.ui.dark = custom.dark;
     }
@@ -3233,8 +3236,15 @@ fn theme_from_preferences(value: &serde_json::Value, strict: bool) -> Result<cra
     if let Some(object) = base.as_object_mut() {
         object.remove("options");
         object.remove("overlays");
+        object.remove("tabs");
     }
     let mut theme: crate::theme_files::ThemeFile = serde_json::from_value(base).map_err(|e| e.to_string())?;
+    if let Err(error) = theme.set_tabs(value) {
+        if strict {
+            return Err(error);
+        }
+        log::warn!("preferences: theme `{}` has invalid tab surfaces ({error}); keeping its base palette", theme.id);
+    }
     if let Err(error) = theme.set_option_tables(value) {
         if strict {
             return Err(error);
@@ -3442,7 +3452,7 @@ fn followed_theme<'a>(prefs: &Prefs, follow: &'a crate::theme_files::Follow) -> 
 
 /// Preserve authored definitions; themes predating options retain their complete snapshot export.
 fn export_theme_file(file: &crate::theme_files::ThemeFile) -> serde_json::Value {
-    if !file.options.is_empty() || !file.overlays.is_empty() || file.needs_newer() {
+    if !file.options.is_empty() || !file.overlays.is_empty() || !file.tabs.is_empty() || file.needs_newer() {
         crate::theme_files::export_file(file)
     } else {
         crate::theme_files::export(&file.name, file.base, &crate::theme_files::resolve(file))
@@ -6306,10 +6316,10 @@ mod tests {
         ]}))
         .unwrap();
         let rows = theme_option_rows(&file, "de", crate::theme_options::PROVIDERS);
-        assert_eq!(rows.iter().map(|r| r.definition.id.as_str()).collect::<Vec<_>>(), ["opacity", "custom"]);
+        assert_eq!(rows.iter().map(|r| r.definition.id.as_str()).collect::<Vec<_>>(), ["opacity", "tab_colours", "tab_fade_ms", "custom"]);
         assert_eq!(rows[0].label, "Deckkraft");
-        assert_eq!(rows[1].label, "Eigene");
-        assert_eq!(theme_option_rows(&file, "ja", crate::theme_options::PROVIDERS)[1].label, "Custom", "English fallback");
+        assert_eq!(rows[3].label, "Eigene");
+        assert_eq!(theme_option_rows(&file, "ja", crate::theme_options::PROVIDERS)[3].label, "Custom", "English fallback");
         let providers = [Provider {
             id: "blur",
             label: "prefs.theme_option_opacity",
@@ -6385,6 +6395,65 @@ mod tests {
             assert_eq!((notices[0].id.as_str(), notices[0].kind), ("amount", ThemeOptionNoticeKind::OutOfRange));
             assert_eq!(prefs.theme_options, saved);
         }
+    }
+
+    #[test]
+    fn tabs_preferences_validate_atomically_restore_safely_and_preserve_export_defaults() {
+        for base in ["dark", "light"] {
+            let file = crate::theme_files::tab_fixture(base);
+            let source = serde_json::to_value(&file).unwrap();
+            let mut h = crate::scenario::Harness::new();
+            for invalid in [json!(false), json!({"sketch":{}}), json!({"SKETCH":{"error":"#ffffff"}}), json!({"SKETCH":{"panel":"bad"}})] {
+                let mut damaged = source.clone();
+                damaged["tabs"] = invalid;
+                let before = h.app.preferences.clone();
+                let error = control(&mut h.app, &json!({"custom_themes":[damaged],"theme":file.id,"ui_scale":1.5,"open":"Interface"})).unwrap_err();
+                assert!(error.contains("tabs"), "{error}");
+                assert_eq!(h.app.preferences, before);
+                assert!(!h.app.prefs_window.open);
+                h.app.load_prefs(&json!({"preferences":{"custom_themes":[damaged,source],"theme":file.id,"zoom_reverse":true}}).to_string());
+                assert_eq!(h.app.preferences.custom_themes.len(), 2);
+                assert!(h.app.preferences.custom_themes[0].tabs.is_empty());
+                assert_eq!(h.app.preferences.custom_themes[1].tabs, file.tabs);
+                assert!(h.app.preferences.zoom_reverse);
+            }
+            let out = control(&mut h.app, &json!({"custom_themes":[source],"theme":file.id,"theme_options":{&file.id:{"tab_colours":false,"tab_fade_ms":123}},"theme_export":true})).unwrap();
+            assert_eq!(out["theme_file"]["tabs"], serde_json::to_value(&file.tabs).unwrap());
+            assert_eq!(out["theme_file"]["options"][0]["default"], true);
+            assert_eq!(out["theme_file"]["options"][1]["default"], 240.0);
+            assert_eq!(out["theme_option_values"]["tab_fade_ms"], 123.0, "step is a control increment, never rounding");
+            assert_eq!(out["theme_option_defs"].as_array().unwrap().iter().find(|o| o["id"] == "tab_fade_ms").unwrap()["step"], 20.0);
+            let mut restored = SolveApp::new(solidcraft_engine::Session::default(), crate::Services::default());
+            restored.load_prefs(&h.app.prefs());
+            assert_eq!(restored.preferences.custom_themes, h.app.preferences.custom_themes);
+            assert_eq!(restored.preferences.theme_options, h.app.preferences.theme_options);
+        }
+    }
+
+    #[test]
+    fn tabs_followed_reload_updates_surfaces_without_losing_saved_options() {
+        let mut h = crate::scenario::Harness::new();
+        let mut source = crate::theme_files::export_file(&crate::theme_files::tab_fixture("dark"));
+        let path = h.dir.join("tabs.json");
+        std::fs::write(&path, source.to_string()).unwrap();
+        control(&mut h.app, &json!({"theme_follow":path,"theme_options":{"file-tabs-dark":{"tab_fade_ms":0}}})).unwrap();
+        assert!(h.call("engine.execute", json!({"command":"sketch.create","params":{"plane":"XY"}}))["ok"].as_bool().unwrap());
+        h.frames(2);
+        assert_eq!(Tokens::get().viewport_top, egui::Color32::from_rgb(0x10, 0x31, 0x28));
+        source["tabs"]["SKETCH"]["viewport_top"] = json!("#1a4232");
+        std::fs::write(&path, source.to_string()).unwrap();
+        control(&mut h.app, &json!({"theme_follow":path})).unwrap();
+        h.frames(2);
+        assert_eq!(Tokens::get().viewport_top, egui::Color32::from_rgb(0x1a, 0x42, 0x32));
+        assert_eq!(h.app.preferences.theme_options["file-tabs-dark"]["tab_fade_ms"], 0);
+        source["tabs"]["SKETCH"]["warning"] = json!("#ffffff");
+        std::fs::write(&path, source.to_string()).unwrap();
+        assert!(control(&mut h.app, &json!({"theme_follow":path})).unwrap()["theme_follow_error"].as_str().unwrap().contains("warning"));
+        h.frames(2);
+        assert_eq!(Tokens::get().viewport_top, egui::Color32::from_rgb(0x1a, 0x42, 0x32));
+        control(&mut h.app, &json!({"theme_follow":""})).unwrap();
+        h.frames(2);
+        assert_eq!(Tokens::get(), Tokens::dark());
     }
 
     #[test]

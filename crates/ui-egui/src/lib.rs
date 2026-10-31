@@ -2573,6 +2573,7 @@ impl SolveApp {
             theme::apply(ctx);
             self.styled = true;
         }
+        theme::TabAccent::publish(self, ctx);
         if !self.fitted {
             self.fit_view();
             self.fitted = true;

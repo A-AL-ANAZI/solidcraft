@@ -21,14 +21,48 @@ pub(crate) struct Provider {
     pub apply: fn(&mut Tokens, &OptionValue),
 }
 
-// Future blur/tab_colours/tab_fade_ms implementations register their behaviour here.
-pub(crate) const PROVIDERS: &[Provider] = &[Provider {
-    id: "opacity",
-    label: "prefs.theme_option_opacity",
-    help: "prefs.theme_option_opacity_help",
-    availability: || Availability::Available,
-    apply: apply_opacity,
-}];
+pub(crate) const PROVIDERS: &[Provider] = &[
+    Provider {
+        id: "opacity",
+        label: "prefs.theme_option_opacity",
+        help: "prefs.theme_option_opacity_help",
+        availability: || Availability::Available,
+        apply: apply_opacity,
+    },
+    Provider {
+        id: "tab_colours",
+        label: "prefs.theme_option_tab_colours",
+        help: "prefs.theme_option_tab_colours_help",
+        availability: || Availability::Available,
+        apply: apply_tab_setting,
+    },
+    Provider {
+        id: "tab_fade_ms",
+        label: "prefs.theme_option_tab_fade_ms",
+        help: "prefs.theme_option_tab_fade_ms_help",
+        availability: || Availability::Available,
+        apply: apply_tab_setting,
+    },
+];
+
+/// Tab providers affect resolution/animation rather than the base palette. Undeclared values
+/// and inactive parents cannot enable them, even for a directly supplied theme.
+pub(crate) fn tab_settings(file: &ThemeFile, values: &BTreeMap<String, OptionValue>) -> (bool, f32) {
+    let offered = offered(file, PROVIDERS);
+    let enabled = offered.iter().any(|o| o.id == "tab_colours") && values.get("tab_colours") == Some(&OptionValue::Bool(true));
+    let duration = if enabled && offered.iter().any(|o| o.id == "tab_fade_ms") {
+        match values.get("tab_fade_ms") {
+            Some(OptionValue::Num(n)) if n.is_finite() => n.clamp(0.0, 600.0),
+            _ => 0.0,
+        }
+    } else {
+        0.0
+    };
+    (enabled, duration)
+}
+
+// Consumed by tab_settings at the per-tab resolution boundary; never mutate base tokens.
+fn apply_tab_setting(_: &mut Tokens, _: &OptionValue) {}
 
 pub(crate) fn standard(id: &str) -> bool {
     matches!(id, "opacity" | "blur" | "tab_colours" | "tab_fade_ms")

@@ -85,6 +85,9 @@ pub struct ThemeFile {
     /// SVG display roles and three-colour semantic ramps; omitted values keep compiled defaults.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub icon_palette: BTreeMap<String, Value>,
+    /// Optional surface overrides for known ribbon tabs. Accents retain their existing tokens.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub tabs: BTreeMap<String, BTreeMap<String, Value>>,
     /// Theme-owned declarations, in file order; standard ids are normalized on import.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub options: Vec<OptionDef>,
@@ -120,6 +123,7 @@ impl Default for ThemeFile {
             radii: BTreeMap::new(),
             borders: BTreeMap::new(),
             icon_palette: BTreeMap::new(),
+            tabs: BTreeMap::new(),
             options: Vec::new(),
             overlays: Vec::new(),
             requires: REQUIREMENTS_LEVEL,
@@ -258,6 +262,12 @@ fn radius_slot<'a>(t: &'a mut Tokens, key: &str) -> Option<&'a mut u8> {
 }
 
 impl ThemeFile {
+    /// Shared by import and preference restoration; invalid saved maps are dropped as a unit.
+    pub(crate) fn set_tabs(&mut self, source: &Value) -> Result<(), String> {
+        self.tabs = parse_tabs(source.get("tabs"))?;
+        Ok(())
+    }
+
     /// A newer format level keeps the authored base tables but disables options and overlays.
     /// Computed from `requires` so it also works after restoring saved preferences.
     pub fn needs_newer(&self) -> bool {
@@ -566,6 +576,7 @@ pub fn from_value(v: &Value) -> Result<ThemeFile, String> {
         Some(value) => value.as_u64().ok_or("`requires` must be a nonnegative integer")?,
     };
     let layer = parse_layer(v)?;
+    let tabs = parse_tabs(v.get("tabs"))?;
     let options = if requires > REQUIREMENTS_LEVEL { Vec::new() } else { parse_options(v.get("options"))? };
     let overlays = if requires > REQUIREMENTS_LEVEL { Vec::new() } else { parse_overlays(v.get("overlays"), &options)? };
     Ok(ThemeFile {
@@ -576,10 +587,39 @@ pub fn from_value(v: &Value) -> Result<ThemeFile, String> {
         radii: layer.radii,
         borders: layer.borders,
         icon_palette: layer.icon_palette,
+        tabs,
         options,
         overlays,
         requires,
     })
+}
+
+/// Keep the accepted vocabulary at the same boundary as the existing accent mapping.
+fn parse_tabs(v: Option<&Value>) -> Result<BTreeMap<String, BTreeMap<String, Value>>, String> {
+    let Some(v) = v else { return Ok(BTreeMap::new()) };
+    let tabs = v.as_object().ok_or("`tabs` must be an object")?;
+    if tabs.len() > crate::theme::TAB_NAMES.len() {
+        return Err("`tabs` has too many entries".into());
+    }
+    let mut parsed = BTreeMap::new();
+    for (tab, surfaces) in tabs {
+        if !crate::theme::TAB_NAMES.contains(&tab.as_str()) {
+            return Err(format!("`tabs.{tab}` is not a ribbon tab"));
+        }
+        let surfaces = surfaces.as_object().ok_or_else(|| format!("`tabs.{tab}` must be an object"))?;
+        let mut values = BTreeMap::new();
+        for (key, value) in surfaces {
+            if !matches!(key.as_str(), "panel" | "viewport_top" | "viewport_bottom") {
+                return Err(format!("`tabs.{tab}.{key}` is not a tab surface"));
+            }
+            if value.as_str().and_then(parse_color).is_none() {
+                return Err(format!("`tabs.{tab}.{key}` must be #rrggbb or #rrggbbaa"));
+            }
+            values.insert(key.clone(), value.clone());
+        }
+        parsed.insert(tab.clone(), values);
+    }
+    Ok(parsed)
 }
 
 fn parse_layer(v: &Value) -> Result<ThemeLayer, String> {
@@ -710,7 +750,13 @@ fn parse_option(v: &Value) -> Result<OptionDef, String> {
         if reserved && (min < floor || max > ceiling) {
             return Err(format!("`min` / `max` for {id} must stay inside {floor} to {ceiling}"));
         }
-        let step = if reserved { 1.0 } else { option_number(v, "step")? };
+        let step = if id == "tab_fade_ms" {
+            20.0
+        } else if reserved {
+            1.0
+        } else {
+            option_number(v, "step")?
+        };
         if step <= 0.0 {
             return Err("`step` must be greater than zero".into());
         }
@@ -997,6 +1043,12 @@ pub fn resolve(theme: &ThemeFile) -> Tokens {
 /// Resolve base tables, then matching overlays in file order. Later tables replace earlier
 /// entries by key. Saved values are normalized here too, so callers cannot bypass finite checks.
 pub fn resolve_with(theme: &ThemeFile, saved: &BTreeMap<String, OptionValue>) -> Tokens {
+    resolve_for_tab(theme, saved, None)
+}
+
+/// Resolve a tab and its base/overlays in one pass. Providers run last so opacity also protects
+/// tab-authored panels. Restored/direct Rust values are revalidated before they affect tokens.
+pub(crate) fn resolve_for_tab(theme: &ThemeFile, saved: &BTreeMap<String, OptionValue>, tab: Option<&str>) -> Tokens {
     if theme.needs_newer() || (theme.options.is_empty() && theme.overlays.is_empty()) || theme.overlays.len() > MAX_OVERLAYS {
         return resolve_base(theme);
     }
@@ -1023,7 +1075,25 @@ pub fn resolve_with(theme: &ThemeFile, saved: &BTreeMap<String, OptionValue>) ->
         merged.icon_palette.extend(overlay.values.icon_palette);
     }
     let mut tokens = resolve_base(&merged);
+    let mut tab_panel = false;
+    if crate::theme_options::tab_settings(theme, &values).0
+        && let Some(tab) = tab
+        && let Ok(tabs) = serde_json::to_value(&theme.tabs).map_err(|e| e.to_string()).and_then(|v| parse_tabs(Some(&v)))
+        && let Some(surfaces) = tabs.get(tab)
+    {
+        for (key, value) in surfaces {
+            if let Some(slot) = slot(&mut tokens, key)
+                && let Ok(colors) = colors_for_key(key, value, 1)
+            {
+                slot.copy_from_slice(&colors);
+            }
+        }
+        tab_panel = surfaces.contains_key("panel");
+    }
     crate::theme_options::apply(theme, &values, &mut tokens);
+    if tab_panel {
+        tokens.protect_tab_panel();
+    }
     tokens
 }
 
@@ -1189,6 +1259,9 @@ pub fn export_file(theme: &ThemeFile) -> Value {
         if !theme.icon_palette.is_empty() {
             obj.insert("icon_palette".into(), json!(theme.icon_palette));
         }
+        if !theme.tabs.is_empty() {
+            obj.insert("tabs".into(), json!(theme.tabs));
+        }
         if !theme.options.is_empty() {
             obj.insert("options".into(), json!(theme.options));
         }
@@ -1210,6 +1283,12 @@ include!(concat!(env!("OUT_DIR"), "/builtin_themes.rs"));
 #[cfg(test)]
 pub(crate) fn is_two_colour(id: &str) -> bool {
     matches!(id, "1-bit" | "1-bit-dark")
+}
+
+#[cfg(test)]
+pub(crate) fn tab_fixture(base: &str) -> ThemeFile {
+    let catalog: Value = serde_json::from_str(include_str!("../tests/fixtures/theme-tabs.json")).unwrap();
+    from_value(&catalog[base]).unwrap()
 }
 
 /// The built-in themes, validated and ordered once; a test checks every shipped file.
@@ -1406,6 +1485,71 @@ impl Follow {
 mod tests {
     use super::*;
 
+    #[test]
+    fn tabs_import_is_strict_and_roundtrips_authored_surfaces() {
+        for base in ["dark", "light"] {
+            let file = tab_fixture(base);
+            assert_eq!(from_value(&export_file(&file)).unwrap(), file);
+            let mut source = export_file(&file);
+            source["tabs"] = json!(crate::theme::TAB_NAMES.iter().map(|tab| (*tab, json!({"panel":"#18202aff"}))).collect::<BTreeMap<_, _>>());
+            assert_eq!(from_value(&source).unwrap().tabs.len(), crate::theme::TAB_NAMES.len());
+            for (tabs, offending) in [
+                (json!(null), "tabs"),
+                (json!([]), "tabs"),
+                (json!({"sketch":{}}), "sketch"),
+                (json!({"MISSING":{}}), "MISSING"),
+                (json!({"SKETCH":null}), "SKETCH"),
+                (json!({"SKETCH":{"panel":"#bad"}}), "panel"),
+                (json!({"SKETCH":{"panel":["#ffffff"]}}), "panel"),
+                (json!({"SKETCH":{"panel":12}}), "panel"),
+            ] {
+                source["tabs"] = tabs;
+                assert!(from_value(&source).unwrap_err().contains(offending));
+            }
+            // Refuse every known non-surface token, not only status colours.
+            for key in keys().into_iter().filter(|key| !matches!(*key, "panel" | "viewport_top" | "viewport_bottom")) {
+                source["tabs"] = json!({"SKETCH":{key:"#ffffff"}});
+                assert!(from_value(&source).unwrap_err().contains(key), "{key}");
+            }
+            source["tabs"] = json!({"SKETCH":{"viewport_top":"#12345678"}});
+            let file = from_value(&source).unwrap();
+            assert_eq!(export_file(&file)["tabs"], source["tabs"]);
+        }
+    }
+
+    #[test]
+    fn tabs_resolve_only_surfaces_and_off_is_exactly_base() {
+        for base in ["dark", "light"] {
+            let file = tab_fixture(base);
+            let defaults = BTreeMap::new();
+            let base = resolve_with(&file, &defaults);
+            for tab in crate::theme::TAB_NAMES {
+                let mut want = base;
+                if let Some(surfaces) = file.tabs.get(*tab) {
+                    for (key, value) in surfaces {
+                        slot(&mut want, key).unwrap().copy_from_slice(&colors_of(value, 1).unwrap());
+                    }
+                }
+                let effective = resolve_for_tab(&file, &defaults, Some(tab));
+                assert_eq!(effective, want, "{tab}");
+                assert_eq!(crate::theme::TabAccent::for_tab(&effective, tab), crate::theme::TabAccent::for_tab(&base, tab));
+                let off = BTreeMap::from([("tab_colours".into(), OptionValue::Bool(false))]);
+                assert_eq!(resolve_for_tab(&file, &off, Some(tab)), resolve_with(&file, &off));
+            }
+            let mut damaged = file.clone();
+            damaged.tabs.get_mut("SKETCH").unwrap().insert("error".into(), json!("#ffffff"));
+            assert_eq!(resolve_for_tab(&damaged, &defaults, Some("SKETCH")), base);
+            let mut absent = file.clone();
+            absent.tabs.clear();
+            assert_eq!(resolve_for_tab(&absent, &defaults, Some("SKETCH")), base);
+            assert_eq!(export_file(&file)["options"][1]["default"], 240.0);
+        }
+        for file in builtin() {
+            assert!(file.tabs.is_empty(), "{}", file.id);
+            assert_eq!(resolve_for_tab(file, &BTreeMap::new(), Some("SKETCH")), resolve(file));
+        }
+    }
+
     fn option_theme(options: Value, overlays: Value) -> Value {
         json!({"format":FORMAT,"name":"Options","base":"dark","options":options,"overlays":overlays})
     }
@@ -1545,7 +1689,7 @@ mod tests {
         assert_eq!(values["tab_fade_ms"], OptionValue::Num(500.0));
         let fade = file.options.iter().find(|o| o.id == "tab_fade_ms").unwrap();
         assert_eq!(fade.parent.as_deref(), Some("tab_colours"));
-        assert!(matches!(&fade.kind, OptionKind::Range { min:100.0, max:500.0, step:1.0, unit:Some(unit), .. } if unit == "ms"));
+        assert!(matches!(&fade.kind, OptionKind::Range { min:100.0, max:500.0, step:20.0, unit:Some(unit), .. } if unit == "ms"));
         assert!(
             file.options
                 .iter()
