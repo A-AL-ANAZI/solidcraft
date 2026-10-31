@@ -522,7 +522,10 @@ The guide spans the reference and cursor projection, including positions inside 
 The two most recent references are kept, and both guides can be drawn. A single guide does
 not move the cursor. Set the preference to `false` to hide the guides. Snap suppression
 (Alt, unless rebound) does the same for that gesture. Snapping the cursor to where those
-guides cross is separate, and off unless `sketch_recent_snap` is true.
+guides cross is separate, and off unless `sketch_recent_snap` is true. While a drawing tool
+waits for a point, `sketch_tracking_points` (default true) makes every shown sketch point
+other than the origin a reference too (line and arc ends, rectangle corners, free points);
+`false` keeps centres and midpoints only.
 
 ### Continuous camera motion
 

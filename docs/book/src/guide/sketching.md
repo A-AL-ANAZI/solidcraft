@@ -33,8 +33,11 @@ Hover over a circle or arc centre, or the midpoint of a straight sketch edge, th
 horizontally or vertically to see a dotted alignment guide. The guide connects that reference
 to the cursor's projection on the sketch axis, within the viewport; it disappears when you
 move away from the axis. SolidCraft keeps the two most recent of these references and can
-draw both guides. One guide on its own does not move the cursor, and endpoints are ordinary
-point snaps rather than remembered references. Preferences › Sketch › **Auto snap to recent
+draw both guides. One guide on its own does not move the cursor. While a drawing tool (Line,
+Rectangle, Circle, Arc, Polygon, Slot, Point…) waits for a point, any sketch point is a
+reference too: the end of a line or arc, a rectangle's corner, or a free point. Preferences ›
+Sketch › **Alignment guides from end points and corners while drawing** turns that off and
+keeps only centres and midpoints. Preferences › Sketch › **Auto snap to recent
 centers and midpoints** is off until you turn it on. With it on, a drawing tool snaps the
 cursor where the horizontal through one reference meets the vertical through the other. On a
 rectangle, the top midpoint and a side midpoint then meet at the rectangle's centre, so that
