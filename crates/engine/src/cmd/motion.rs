@@ -103,7 +103,7 @@ pub static COMMANDS: &[CommandSpec] = &[
     CommandSpec::new("joint.sweep", "Sweep Joint", sweep::sweep).icon("interference").params(sweep::SWEEP_DOC),
     CommandSpec::new("motion.list", "List Motion Studies", list_studies).icon("list").noundo(),
     CommandSpec::new("motion.delete", "Delete Motion Study", delete_study).icon("delete").params("study"),
-    CommandSpec::new("explode.create", "Exploded View", explode_create).at("SOLID", "ASSEMBLE").icon("explode").params(
+    CommandSpec::new("explode.create", "Exploded View", explode_create).at("SOLID", "ASSEMBLE").icon("explode").enabled(has_parts_to_explode).params(
         "name?; scale? (automatic: each occurrence pushed away from the assembly's centre by scale × its offset, default 1); \
          moves?: [{occurrence, translate: [x,y,z]}] (instead of automatic)",
     ),
@@ -1012,6 +1012,16 @@ fn delete_study(s: &mut Session, p: &Value) -> Result<Value> {
 }
 
 // ---- Exploded views ----
+
+/// Why Exploded View is greyed out: it pulls components apart, so a design of plain bodies, or
+/// with a single component, has nothing to separate (#9142).
+const EXPLODE_NEEDS_COMPONENTS: &str =
+    "Exploded View pulls components apart, so the design needs two or more of them (New Component, Insert Design or Create Components from Bodies)";
+
+/// Exploded View is offered once the design has two or more occurrences to move apart (#9142).
+fn has_parts_to_explode(s: &Session) -> std::result::Result<(), String> {
+    if s.doc.occurrences.len() >= 2 { Ok(()) } else { Err(EXPLODE_NEEDS_COMPONENTS.into()) }
+}
 
 fn view_index(s: &Session, p: &Value, cmd: &str) -> Result<usize> {
     let key = match p.get("view") {

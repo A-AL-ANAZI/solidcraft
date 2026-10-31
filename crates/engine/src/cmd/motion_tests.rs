@@ -691,6 +691,33 @@ fn exploded_views_show_without_changing_the_design() {
     assert_eq!(run(&mut s, "explode.list", json!({}))["views"].as_array().map(Vec::len), Some(2));
 }
 
+/// #9142: on a part of plain bodies (the sample plate) Exploded View opened its dialog and failed
+/// on OK ("an exploded view needs two or more occurrences"). It is greyed out instead, saying why,
+/// until the design has two components to pull apart.
+#[test]
+fn exploded_view_is_greyed_out_until_there_are_two_components() {
+    let spec = crate::cmd::find_command("explode.create").unwrap();
+    let mut s = Session::default();
+    run(&mut s, "solid.box", json!({"length": 10, "width": 10, "height": 10, "body_name": "Plate"}));
+    let info = spec.info(&s);
+    assert!(!info.enabled, "a part of plain bodies has nothing to explode");
+    assert_eq!(info.disabled_reason.as_deref(), Some(super::EXPLODE_NEEDS_COMPONENTS));
+    let e = s.execute("explode.create", &json!({"scale": 1.62})).unwrap_err();
+    assert!(e.to_string().contains("two or more of them"), "{e}");
+    assert!(s.doc.assembly.exploded.is_empty(), "nothing was added: {e}");
+    // One component is still nothing to pull apart.
+    run(&mut s, "component.from_bodies", json!({"bodies": ["Plate"]}));
+    assert_eq!(s.doc.occurrences.len(), 1);
+    assert!(!spec.info(&s).enabled);
+    // A second one brings it back, and the automatic view separates the two.
+    run(&mut s, "component.activate", json!({"component": "root"}));
+    run(&mut s, "component.create", json!({"name": "Lid"}));
+    run(&mut s, "solid.box", json!({"length": 10, "width": 10, "height": 10, "corner": [30, 0, 0]}));
+    assert!(spec.info(&s).enabled, "{:?}", spec.info(&s).disabled_reason);
+    let r = run(&mut s, "explode.create", json!({"scale": 1.62}));
+    assert_eq!(r["moves"].as_array().map(Vec::len), Some(2), "{r}");
+}
+
 /// Pictures drawn by the CPU rasterizer (the engine has no GPU): real views of the scene.
 fn cpu(scene: &crate::render::Scene, cam: &crate::render::Camera, w: u32, h: u32) -> Result<crate::capture::Picture, String> {
     Ok(crate::capture::Picture { rgba: crate::render::render(scene, cam, w as usize, h as usize).rgba, renderer: "cpu" })

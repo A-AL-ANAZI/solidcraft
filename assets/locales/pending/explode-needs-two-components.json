@@ -1,0 +1,29 @@
+{
+  "en": {
+    "ui.explode_needs_two_components": "Exploded View pulls components apart, so the design needs two or more of them (New Component, Insert Design or Create Components from Bodies)"
+  },
+  "ar": {
+    "ui.explode_needs_two_components": "يُبعد العرض المفكك المكوّنات بعضها عن بعض، لذا يحتاج التصميم إلى مكوّنين أو أكثر (مكوّن جديد، أو إدراج تصميم، أو إنشاء مكوّنات من الأجسام)"
+  },
+  "de": {
+    "ui.explode_needs_two_components": "Die Explosionsdarstellung zieht Komponenten auseinander, daher braucht die Konstruktion mindestens zwei davon (Neue Komponente, Konstruktion einfügen oder Komponenten aus Körpern erstellen)"
+  },
+  "fr": {
+    "ui.explode_needs_two_components": "La vue éclatée écarte les composants les uns des autres : la conception doit en contenir au moins deux (Nouveau composant, Insérer une conception ou Créer des composants à partir des corps)"
+  },
+  "he": {
+    "ui.explode_needs_two_components": "תצוגה מפוצצת מרחיקה רכיבים זה מזה, ולכן התכן צריך שניים או יותר מהם (רכיב חדש, הוספת תכן או יצירת רכיבים מגופים)"
+  },
+  "ja": {
+    "ui.explode_needs_two_components": "分解図はコンポーネント同士を引き離すため、デザインに 2 つ以上のコンポーネントが必要です（新規コンポーネント、デザインを挿入、またはボディからコンポーネントを作成）"
+  },
+  "ko": {
+    "ui.explode_needs_two_components": "분해 보기는 구성 요소를 서로 떼어 놓으므로 설계에 구성 요소가 두 개 이상 있어야 합니다(새 구성 요소, 설계 삽입 또는 바디로 구성 요소 만들기)"
+  },
+  "vi": {
+    "ui.explode_needs_two_components": "Chế độ xem phân rã tách các cụm chi tiết ra xa nhau, nên thiết kế cần có từ hai cụm chi tiết trở lên (Tạo mới Cụm chi tiết, Chèn thiết kế vào cụm hoặc Tạo cụm chi tiết từ các thân khối)"
+  },
+  "zh": {
+    "ui.explode_needs_two_components": "爆炸图会将组件彼此分开，因此设计中需要两个或更多组件（新建组件、插入设计或由实体创建组件）"
+  }
+}
