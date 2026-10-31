@@ -60,6 +60,7 @@ pub mod edit;
 pub mod features;
 pub mod inspect;
 pub mod joints;
+pub mod mass_properties;
 pub mod print_face;
 pub mod render;
 pub mod render_lights;
