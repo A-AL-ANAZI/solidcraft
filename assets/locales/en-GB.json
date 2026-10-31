@@ -92,6 +92,7 @@
   "prefs.theme_follow_note": "Reloaded whenever another tool rewrites it. Choosing a theme stops following it.",
   "prefs.theme_follow_off": "Off",
   "prefs.theme_follow_stop": "Stop following",
+  "prefs.theme_option_opacity_help": "Adjust floating panel opacity. A readability floor protects text over viewport colours.",
   "prefs.trackpad_zoom_modifier.help": "Hold only this key to zoom at the pointer with vertical scroll. Off keeps the existing scroll behaviour.",
   "prefs.view": "View behaviour",
   "prefs.viewport_background_colour": "Colour",
