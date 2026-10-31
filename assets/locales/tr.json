@@ -819,6 +819,7 @@
   "cmd.appearance_pick_up": "Görünümü Al",
   "cmd.appearance_replace": "Görünümü Değiştir",
   "cmd.assembly_bom": "Malzeme listesi",
+  "cmd.assembly_mass_properties": "Kütle özellikleri",
   "cmd.body.print_face": "Baskı yüzeyi",
   "cmd.body_rename": "Gövdeyi yeniden adlandır",
   "cmd.browser_collapse_all": "Tümünü Daralt",

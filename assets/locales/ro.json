@@ -819,6 +819,7 @@
   "cmd.appearance_pick_up": "Preia aspectul",
   "cmd.appearance_replace": "Înlocuiește aspectul",
   "cmd.assembly_bom": "Listă de materiale",
+  "cmd.assembly_mass_properties": "Proprietăți de masă",
   "cmd.body.print_face": "Față de imprimare",
   "cmd.body_rename": "Redenumește corpul",
   "cmd.browser_collapse_all": "Restrânge tot",

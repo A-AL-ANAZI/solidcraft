@@ -819,6 +819,7 @@
   "cmd.appearance_pick_up": "Převzít vzhled",
   "cmd.appearance_replace": "Nahradit vzhled",
   "cmd.assembly_bom": "Kusovník",
+  "cmd.assembly_mass_properties": "Hmotnostní vlastnosti",
   "cmd.body.print_face": "Tisková plocha",
   "cmd.body_rename": "Přejmenovat těleso",
   "cmd.browser_collapse_all": "Sbalit vše",

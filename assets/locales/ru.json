@@ -813,6 +813,7 @@
   "cmd.appearance_pick_up": "Взять внешний вид",
   "cmd.appearance_replace": "Заменить внешний вид",
   "cmd.assembly_bom": "Спецификация",
+  "cmd.assembly_mass_properties": "Массовые характеристики",
   "cmd.body.print_face": "Грань печати",
   "cmd.body_rename": "Переименовать тело",
   "cmd.browser_collapse_all": "Свернуть всё",

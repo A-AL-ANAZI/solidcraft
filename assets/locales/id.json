@@ -819,6 +819,7 @@
   "cmd.appearance_pick_up": "Ambil Tampilan",
   "cmd.appearance_replace": "Ganti Tampilan",
   "cmd.assembly_bom": "Daftar Material (BOM)",
+  "cmd.assembly_mass_properties": "Properti massa",
   "cmd.body.print_face": "Permukaan cetak",
   "cmd.body_rename": "Ganti Nama Bodi",
   "cmd.browser_collapse_all": "Ciutkan Semua",

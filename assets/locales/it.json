@@ -819,6 +819,7 @@
   "cmd.appearance_pick_up": "Preleva aspetto",
   "cmd.appearance_replace": "Sostituisci aspetto",
   "cmd.assembly_bom": "Distinta base",
+  "cmd.assembly_mass_properties": "Proprietà di massa",
   "cmd.body.print_face": "Faccia di stampa",
   "cmd.body_rename": "Rinomina corpo",
   "cmd.browser_collapse_all": "Comprimi tutto",

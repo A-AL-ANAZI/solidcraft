@@ -819,6 +819,7 @@
   "cmd.appearance_pick_up": "Взяти вигляд",
   "cmd.appearance_replace": "Замінити вигляд",
   "cmd.assembly_bom": "Специфікація матеріалів",
+  "cmd.assembly_mass_properties": "Масові характеристики",
   "cmd.body.print_face": "Грань друку",
   "cmd.body_rename": "Перейменувати тіло",
   "cmd.browser_collapse_all": "Згорнути все",

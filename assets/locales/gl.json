@@ -819,6 +819,7 @@
   "cmd.appearance_pick_up": "Tomar aparencia",
   "cmd.appearance_replace": "Substituír aparencia",
   "cmd.assembly_bom": "Lista de materiais",
+  "cmd.assembly_mass_properties": "Propiedades de masa",
   "cmd.body.print_face": "Cara de impresión",
   "cmd.body_rename": "Renomear o corpo",
   "cmd.browser_collapse_all": "Contraer todo",

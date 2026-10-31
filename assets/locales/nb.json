@@ -819,6 +819,7 @@
   "cmd.appearance_pick_up": "Plukk opp utseende",
   "cmd.appearance_replace": "Erstatt utseende",
   "cmd.assembly_bom": "Stykkliste",
+  "cmd.assembly_mass_properties": "Masseegenskaper",
   "cmd.body.print_face": "Utskriftsflate",
   "cmd.body_rename": "Gi nytt navn til kropp",
   "cmd.browser_collapse_all": "Skjul alle",

@@ -819,6 +819,7 @@
   "cmd.appearance_pick_up": "Преузми изглед",
   "cmd.appearance_replace": "Замени изглед",
   "cmd.assembly_bom": "Саставница",
+  "cmd.assembly_mass_properties": "Својства масе",
   "cmd.body.print_face": "Површина за штампу",
   "cmd.body_rename": "Преименуј тело",
   "cmd.browser_collapse_all": "Скупи све",

@@ -819,6 +819,7 @@
   "cmd.appearance_pick_up": "Preuzmi izgled",
   "cmd.appearance_replace": "Zamijeni izgled",
   "cmd.assembly_bom": "Sastavnica",
+  "cmd.assembly_mass_properties": "Svojstva mase",
   "cmd.body.print_face": "Ploha ispisa",
   "cmd.body_rename": "Preimenuj tijelo",
   "cmd.browser_collapse_all": "Sažmi sve",

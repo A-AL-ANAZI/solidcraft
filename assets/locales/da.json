@@ -819,6 +819,7 @@
   "cmd.appearance_pick_up": "Optag udseende",
   "cmd.appearance_replace": "Erstat udseende",
   "cmd.assembly_bom": "Stykliste",
+  "cmd.assembly_mass_properties": "Masseegenskaber",
   "cmd.body.print_face": "Printflade",
   "cmd.body_rename": "Omdøb emne",
   "cmd.browser_collapse_all": "Fold alle sammen",

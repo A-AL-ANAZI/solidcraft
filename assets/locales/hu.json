@@ -819,6 +819,7 @@
   "cmd.appearance_pick_up": "Megjelenés felvétele",
   "cmd.appearance_replace": "Megjelenés cseréje",
   "cmd.assembly_bom": "Anyagjegyzék",
+  "cmd.assembly_mass_properties": "Tömegjellemzők",
   "cmd.body.print_face": "Nyomtatási lap",
   "cmd.body_rename": "Test átnevezése",
   "cmd.browser_collapse_all": "Összes összecsukása",

@@ -819,6 +819,7 @@
   "cmd.appearance_pick_up": "Ambil Penampilan",
   "cmd.appearance_replace": "Gantikan Penampilan",
   "cmd.assembly_bom": "Senarai Bahan",
+  "cmd.assembly_mass_properties": "Sifat jisim",
   "cmd.body.print_face": "Muka cetakan",
   "cmd.body_rename": "Tukar Nama Jasad",
   "cmd.browser_collapse_all": "Ringkaskan Semua",

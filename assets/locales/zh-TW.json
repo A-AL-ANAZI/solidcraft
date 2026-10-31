@@ -819,6 +819,7 @@
   "cmd.appearance_pick_up": "吸取外觀",
   "cmd.appearance_replace": "取代外觀",
   "cmd.assembly_bom": "物料清單",
+  "cmd.assembly_mass_properties": "質量屬性",
   "cmd.body.print_face": "列印底面",
   "cmd.body_rename": "重新命名實體",
   "cmd.browser_collapse_all": "全部摺疊",

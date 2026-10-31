@@ -819,6 +819,7 @@
   "cmd.appearance_pick_up": "Uiterlijk oppakken",
   "cmd.appearance_replace": "Uiterlijk vervangen",
   "cmd.assembly_bom": "Stuklijst",
+  "cmd.assembly_mass_properties": "Massa-eigenschappen",
   "cmd.body.print_face": "Printvlak",
   "cmd.body_rename": "Lichaam hernoemen",
   "cmd.browser_collapse_all": "Alles samenvouwen",
