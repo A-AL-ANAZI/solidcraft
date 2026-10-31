@@ -386,6 +386,20 @@ pub(crate) fn did_you_mean(id: &str) -> String {
     }
 }
 
+/// "no body `name`", and the closest of `bodies` when it is near enough to be a typo or another
+/// case of the same name (`b` for `B`): `no body `Bdy`; did you mean `Body`?` (#9740).
+pub(crate) fn no_body<'a>(name: &str, bodies: impl IntoIterator<Item = &'a str>) -> String {
+    let want = name.to_lowercase();
+    let near = (want.chars().count() / 3).max(1);
+    let closest = (want.len() <= 256)
+        .then(|| bodies.into_iter().map(|b| (edit_distance(&want, &b.to_lowercase()), b)).filter(|(d, _)| *d <= near).min_by_key(|(d, _)| *d))
+        .flatten();
+    match closest {
+        Some((_, b)) => format!("no body `{name}`; did you mean `{b}`?"),
+        None => format!("no body `{name}`"),
+    }
+}
+
 /// Levenshtein distance: the single-character edits that turn `a` into `b`.
 pub(crate) fn edit_distance(a: &str, b: &str) -> usize {
     let b: Vec<char> = b.chars().collect();

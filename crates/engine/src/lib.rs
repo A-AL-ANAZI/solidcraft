@@ -960,6 +960,22 @@ impl Session {
         }
     }
 
+    /// The model body a name means: one of the model's own bodies as it is named, else the body
+    /// a placed copy shows (`KB (K:2)`, the name `inspect.measure` lists), as `appearance.assign`
+    /// takes it (#9740). `None` when neither names it.
+    pub(crate) fn own_body_name(&self, name: &str) -> Option<String> {
+        if self.model.state().body(name).is_some() {
+            return Some(name.to_string());
+        }
+        self.body_frames().iter().find(|(world, ..)| world == name).map(|(_, own, _)| own.clone())
+    }
+
+    /// A component by its id or name, or by the name of one of its placements (`K:2`); never the
+    /// root.
+    pub(crate) fn component_or_placement(&self, key: &str) -> Option<u64> {
+        self.doc.find_component(key).or_else(|| self.doc.occurrences.iter().find(|o| o.name == key).map(|o| o.component)).filter(|id| *id != 0)
+    }
+
     pub fn refresh(&mut self) {
         if self.model.evaluate_shared(&self.doc) {
             #[cfg(test)]
