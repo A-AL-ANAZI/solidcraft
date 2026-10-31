@@ -4146,6 +4146,7 @@
   "ui.equation_y_of_x": "y(x)",
   "ui.equivalent_radius": "Rayon équivalent",
   "ui.expand": "Développer",
+  "ui.explode_needs_two_components": "La vue éclatée écarte les composants les uns des autres : la conception doit en contenir au moins deux (Nouveau composant, Insérer une conception ou Créer des composants à partir des corps)",
   "ui.exportDxf": "Exporter en DXF…",
   "ui.export_ellipsis_keymap": "Exporter…",
   "ui.export_keymap_tip": "Raccourcis, favoris de la boîte S et barre d'outils, dans un fichier",

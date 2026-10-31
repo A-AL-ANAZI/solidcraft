@@ -234,6 +234,8 @@
   "ui.default_modelling_orientation": "Default modelling orientation",
   "ui.design_properties.license": "Licence",
   "ui.design_properties.organization": "Organisation",
+  "ui.details_curvature_caption": "Faces are coloured by their local radius of curvature.",
+  "ui.details_draft_caption": "Faces are coloured by their angle to the pull direction.",
   "ui.export_keymap_tip": "Keys, S box favourites and the toolbar, as a file",
   "ui.layout_compact": "Compact",
   "ui.layout_floating": "Floating",
