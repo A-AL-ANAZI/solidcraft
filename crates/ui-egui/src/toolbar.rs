@@ -3089,7 +3089,7 @@ pub fn shortcuts(app: &mut SolveApp, ctx: &egui::Context) {
                     let blank = app.session.doc.sketch(sketch).is_ok_and(crate::sketch_palette::is_blank);
                     let depth = app.session.undo.len();
                     app.finish_sketch();
-                    if blank && app.session.active_sketch.is_none() && app.run("timeline.delete", json!({ "feature": sketch.to_string() })).is_ok() {
+                    if blank && app.session.active_sketch.is_none() && app.run("timeline.delete", json!({ "feature": sketch })).is_ok() {
                         app.session.undo.truncate(depth + 1);
                     }
                     continue;

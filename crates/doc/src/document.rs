@@ -3471,15 +3471,35 @@ impl Document {
         self.features.iter().find(|f| f.name.eq_ignore_ascii_case(r))
     }
 
+    /// Resolve a textual timeline reference. An exact name wins even when it looks like an id.
+    /// Older scripts also pass ids as strings or use a different case for a unique name.
+    pub fn resolve_feature_name(&self, name: &str) -> Result<&Feature> {
+        if let Some(feature) = self.features.iter().find(|f| f.name == name) {
+            return Ok(feature);
+        }
+        if let Ok(id) = name.parse::<u64>()
+            && let Some(feature) = self.feature(id)
+        {
+            return Ok(feature);
+        }
+        let mut matches = self.features.iter().filter(|f| f.name.eq_ignore_ascii_case(name));
+        let feature = matches.next().ok_or_else(|| DocError::Invalid(format!("no feature `{name}`")))?;
+        if matches.next().is_some() {
+            return Err(DocError::Invalid(format!("ambiguous feature `{name}`. Use its exact name or numeric id")));
+        }
+        Ok(feature)
+    }
+
     /// The feature a pattern or mirror seed names, resolved the way `replay()` resolved seed
     /// names before seeds were keyed by id (#1134): an exact name match on a feature that is
     /// not a sketch or a construction plane wins — a sketch and its extrude often share a
-    /// name, and the feature that makes geometry is the one to copy — else [`find_feature`].
+    /// name, and the feature that makes geometry is the one to copy. Other references use
+    /// the timeline lookup.
     pub fn seed_feature(&self, name: &str) -> Option<&Feature> {
         self.features
             .iter()
             .find(|x| x.name == name && !matches!(x.kind, FeatureKind::Sketch { .. } | FeatureKind::ConstructionPlane { .. }))
-            .or_else(|| self.find_feature(name))
+            .or_else(|| self.resolve_feature_name(name).ok())
     }
 
     fn unique_name(&self, base: &str) -> String {
