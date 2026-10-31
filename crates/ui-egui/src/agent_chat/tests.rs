@@ -100,6 +100,38 @@ fn agent_login_refresh_returns_to_unverified_discovery() {
     assert!(!app.agent_chat.settings.tests.contains_key("qwen"));
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn a_sign_in_proven_in_one_tab_holds_in_every_tab() {
+    // #9293: discovery found no login file before the user signed in from the panel. The chat's
+    // proof of the sign-in belongs to the window, so a new tab doesn't ask for it again.
+    let mut app = app_with_discovered_login();
+    if let Some(d) = app.agent_chat.detection.as_mut() {
+        d.found[0].login = discover::Login::NotLoggedIn;
+    }
+    assert_eq!(assistant_mark(&app), AssistantMark::NeedsAuth);
+    app.agent_chat.on_event(Event::Ready { agent: "Qwen Code".into(), images: false });
+    assert_eq!(agents::current(&app).unwrap().login, "signed_in");
+
+    crate::documents::open_tab(&mut app, solidcraft_engine::Session::default()).unwrap();
+    assert_eq!(app.agent_chat.state(), State::Off, "a new tab starts its own conversation");
+    assert_eq!(agents::current(&app).unwrap().login, "signed_in");
+    assert_eq!(assistant_mark(&app), AssistantMark::Ready, "no sign-in mark in the new tab");
+
+    // Evidence from the new tab is the newest, also back in the first one.
+    app.agent_chat.running_id = "qwen".into();
+    app.agent_chat.on_event(Event::AuthRequired { methods: vec![] });
+    crate::documents::switch(&mut app, 0);
+    assert_eq!(agents::current(&app).unwrap().login, "signed_out");
+    app.agent_chat.on_event(Event::Ready { agent: "Qwen Code".into(), images: false });
+
+    // A replacement design starts a fresh conversation, not a fresh sign-in.
+    crate::documents::reset_chat(&mut app);
+    assert_eq!(agents::current(&app).unwrap().login, "signed_in");
+    crate::documents::close(&mut app, 0, true);
+    assert_eq!(agents::current(&app).unwrap().login, "signed_in", "closing a tab keeps the window's evidence");
+}
+
 #[test]
 fn streamed_text_joins_and_tool_updates_change_their_call() {
     let mut c = chat();

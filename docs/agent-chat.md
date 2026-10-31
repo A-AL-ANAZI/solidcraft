@@ -133,7 +133,8 @@ clears the files waiting on the chips too.
 ## Typing while the agent works
 
 Each design tab has its own conversation, agent session, draft, attachments and queued messages.
-A new tab starts with an empty chat. Switching away stops the current turn and keeps its
+A new tab starts with an empty chat and a session of its own; a sign-in the chat confirmed in one
+tab still counts in the others, so a new tab doesn't mark the agent as signed out. Switching away stops the current turn and keeps its
 completed changes in that design's undo history. Returning restores the conversation; queued
 messages wait for **Send**. Closing a design closes its conversation. Conversations are kept
 only while the tabs remain open.

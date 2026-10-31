@@ -419,6 +419,7 @@ pub struct AgentChat {
     /// Settings → AI: the Add agent dialog and connection tests.
     pub settings: settings::State,
     /// Latest authentication evidence from a connection test or a chat, per agent; never saved.
+    /// It belongs to the window, not to one tab's conversation.
     login_results: std::collections::HashMap<String, bool>,
     /// Desktop host hook: start the endpoint on demand.
     pub control_starter: Option<ControlStarter>,
@@ -448,6 +449,8 @@ impl AgentChat {
         std::mem::swap(&mut self.models_cache, &mut other.models_cache);
         std::mem::swap(&mut self.window_placed, &mut other.window_placed);
         std::mem::swap(&mut self.connect_at_start, &mut other.connect_at_start);
+        // A sign-in proven in one tab holds for that agent in every tab (#9293).
+        std::mem::swap(&mut self.login_results, &mut other.login_results);
         #[cfg(not(target_arch = "wasm32"))]
         {
             std::mem::swap(&mut self.detection, &mut other.detection);

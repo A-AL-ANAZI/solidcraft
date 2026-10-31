@@ -184,8 +184,8 @@ conversation shows the merged step with an Undo button while it's still the late
 Each open design tab owns an `AgentChat`, including its transcript, backend session, agent
 selection, sign-in retry, draft, attachments, pending messages and approval state. `DocSlot`
 parks that state alongside its `Session`; switching restores both together. Panel visibility,
-placement, agent discovery, endpoint model cache, settings dialogs and the desktop endpoint
-starter remain window state. A new tab gets a fresh conversation. Closing a tab drops its
+placement, agent discovery, the latest sign-in evidence per agent, endpoint model cache,
+settings dialogs and the desktop endpoint starter remain window state. A new tab gets a fresh conversation. Closing a tab drops its
 backend; closing the last tab or replacing its design (including programmatic New, Open and
 Recover commands or scripts) clears its conversation.
 Conversation state is in memory only and does not change the design file format.
