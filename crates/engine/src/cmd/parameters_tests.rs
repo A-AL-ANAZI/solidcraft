@@ -326,6 +326,43 @@ fn csv_and_json_round_trip() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+#[test]
+fn csv_round_trips_comments_with_line_breaks() {
+    for comment in ["line one\nline two", "\r\nfirst, \"quoted\"\r\n\r\nlast\r\n", "one\rtwo"] {
+        let mut s = Session::default();
+        run(&mut s, "parameters.add", json!({"name": "L", "expression": "30", "comment": comment}));
+        run(&mut s, "parameters.add", json!({"name": "W", "expression": "10"}));
+        let exported = run(&mut s, "parameters.export", json!({"format": "csv"}));
+
+        let mut fresh = Session::default();
+        let imported = run(&mut fresh, "parameters.import", json!({"text": exported["text"]}));
+        assert_eq!(imported["imported"], json!(["L", "W"]));
+        let list = run(&mut fresh, "parameters.list", json!({}));
+        assert_eq!(row(&list, "L")["comment"], comment);
+        assert_eq!(row(&list, "L")["value"], 30.0);
+        assert_eq!(row(&list, "W")["value"], 10.0);
+    }
+}
+
+#[test]
+fn csv_import_accepts_a_bom_before_the_header() {
+    let mut s = Session::default();
+    let csv = "\u{feff}\"NAME\",expression\r\n\r\nA,5";
+    let imported = run(&mut s, "parameters.import", json!({"text": csv}));
+    assert_eq!(imported["imported"], json!(["A"]));
+    assert_eq!(row(&run(&mut s, "parameters.list", json!({})), "A")["value"], 5.0);
+}
+
+#[test]
+fn csv_import_with_an_unclosed_quote_leaves_parameters_alone() {
+    let mut s = Session::default();
+    run(&mut s, "parameters.add", json!({"name": "L", "expression": "10"}));
+    let before = s.doc.to_json();
+    let csv = "name,expression,comment\nL,30,updated\nW,5,\"unfinished\n";
+    assert!(s.execute("parameters.import", &json!({"text": csv})).is_err());
+    assert_eq!(s.doc.to_json(), before);
+}
+
 /// #8960: the text marker accepts ASCII case variants without changing numeric units.
 #[test]
 fn text_parameter_imports_accept_mixed_case_units() {
