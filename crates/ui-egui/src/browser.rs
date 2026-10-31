@@ -166,6 +166,9 @@ pub struct TreeState {
     pub section_hidden: bool,
     /// What waits for the Capture Position question: a command id, or [`SAVE`].
     pub capture_prompt: Option<String>,
+    /// The design, undo depth and visibility when the button last went down: a drag over the eyes
+    /// merges the steps it made into one (`eye_drag_frame`).
+    eye_press: Option<(Arc<Document>, usize, solidcraft_engine::Visibility)>,
     /// The last row clicked (for Shift ranges).
     anchor: Option<String>,
     /// Row keys in drawing order this frame (for Shift ranges).
@@ -433,6 +436,35 @@ pub fn origin_items(app: &SolveApp) -> Vec<Item> {
 /// items keep their own state, and hiding or showing them never changes it.
 pub fn toggle_folder(app: &mut SolveApp, key: &str) {
     let _ = app.run("browser.visibility", json!({ "tree_folders": [key], "visible": app.session.folder_hidden(key) }));
+}
+
+/// A drag over the eyes is one undo step (#9680). When the button goes down the undo depth and the
+/// hidden items are noted; when it comes up, the steps the drag made are merged into the first of
+/// them. Runs every frame, whatever else is open, so a release is never missed.
+pub(crate) fn eye_drag_frame(app: &mut SolveApp, ctx: &egui::Context) {
+    let (pressed, down) = ctx.input(|i| (i.pointer.primary_pressed(), i.pointer.primary_down()));
+    if pressed {
+        app.tree.eye_press = Some((app.session.doc.clone(), app.session.undo.len(), without_origin(app.session.visibility.clone())));
+    }
+    if down {
+        return;
+    }
+    let dragged = ctx.data_mut(|d| d.remove_temp::<bool>(crate::ui_kit::eye_drag_id())).is_some();
+    let Some((doc, depth, visibility)) = app.tree.eye_press.take().filter(|_| dragged) else { return };
+    // shortcut: once the history is full (200 steps) its length stops growing, so the drag is left as
+    // separate steps, like the point-cloud and canvas drags; the visibility test keeps a trimmed front
+    // from being merged wrongly.
+    let undo = &mut app.session.undo;
+    if undo.len() > depth + 1 && undo.get(depth).is_some_and(|s| Arc::ptr_eq(&s.doc, &doc) && without_origin(s.visibility.clone()) == visibility) {
+        undo.truncate(depth + 1);
+    }
+}
+
+/// The Origin's own eye is not an undo step (`set_origin_shown`), so the drag's steps do not hold it:
+/// it is left out of the comparison.
+fn without_origin(mut visibility: solidcraft_engine::Visibility) -> solidcraft_engine::Visibility {
+    visibility.origin_hidden = None;
+    visibility
 }
 
 /// A folder shortcut target lasts until another click, Escape, or a change of design/model.
