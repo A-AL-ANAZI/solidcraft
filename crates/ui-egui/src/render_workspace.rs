@@ -480,8 +480,9 @@ impl Default for State {
 
 impl State {
     /// Retain the selected viewport adapter, but do not open another device or
-    /// compile shaders until Render is used. A later viewport installation (for
-    /// example safe-mode fallback) replaces only a not-yet-started factory.
+    /// compile shaders until the GPU path image method is used in Render
+    /// ([`wants_path_host`]). A later viewport installation (for example safe-mode
+    /// fallback) replaces only a not-yet-started factory.
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn defer_path_host(&mut self, key: String, create: impl FnOnce() -> Result<ImageHost, String> + Send + 'static) {
         if matches!(self.path_host, PathHost::NotStarted) {
@@ -556,9 +557,17 @@ pub fn host_executor(max_dimension: u32, depth: bool, samples: u32) -> Result<Ex
     })
 }
 
+/// Whether the GPU path tracer is wanted now: Render is open with the GPU path image method.
+/// Its setup compiles a large shader that some Vulkan drivers take gigabytes and minutes over,
+/// so Render with the Raster or CPU method never starts it (#9041).
+#[cfg(not(target_arch = "wasm32"))]
+fn wants_path_host(app: &SolveApp) -> bool {
+    active(app) && app.render_workspace.view.method == ImageMethod::GpuRaytrace
+}
+
 pub fn sync_backend(app: &mut SolveApp) {
     #[cfg(not(target_arch = "wasm32"))]
-    if active(app) {
+    if wants_path_host(app) {
         app.render_workspace.start_deferred_path_host();
     }
     if let Some(took) = app.render_workspace.path_host.poll() {
@@ -673,7 +682,9 @@ pub fn enter(app: &mut SolveApp, render: bool) -> Result<(), String> {
             }
         }
         #[cfg(not(target_arch = "wasm32"))]
-        app.render_workspace.start_deferred_path_host();
+        if wants_path_host(app) {
+            app.render_workspace.start_deferred_path_host();
+        }
     } else {
         assign::stop(app);
         if let Some((camera, perspective)) = app.render_workspace.design_camera.take() {

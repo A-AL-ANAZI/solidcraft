@@ -867,6 +867,52 @@ mod async_path_host {
         h.frames(3);
     }
 
+    /// Choose the GPU path image method, which is what starts the deferred setup.
+    fn choose_gpu_path(h: &mut Harness) {
+        select_image_method(&mut h.app, ImageMethod::GpuRaytrace);
+        h.frames(1);
+    }
+
+    /// Entering Render and moving its view with the Raster (or CPU) image method never compiles
+    /// the GPU path tracer: on Vulkan drivers that compile takes gigabytes (#9041). Choosing the
+    /// GPU path method starts it, once.
+    #[test]
+    fn render_with_another_image_method_never_starts_the_path_setup() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let calls = Arc::new(AtomicUsize::new(0));
+        let observed = calls.clone();
+        let mut h = Harness::new();
+        h.call("ui.resize", json!({"width":1200,"height":900}));
+        h.app.render_workspace.defer_path_host("selected viewport".into(), move || {
+            observed.fetch_add(1, Ordering::SeqCst);
+            job::ImageHost::with_executor(Arc::new(TestExecutor)).map_err(|e| e.to_string())
+        });
+        enter(&mut h.app, true).unwrap();
+        assert_eq!(h.app.render_workspace.view.method, ImageMethod::Raster);
+        for step in 0..20 {
+            h.call("ui.camera", json!({"yaw": f64::from(step) * 0.1, "pitch": 0.3}));
+            h.frames(1);
+        }
+        select_image_method(&mut h.app, ImageMethod::CpuRaytrace);
+        h.frames(5);
+        enter(&mut h.app, false).unwrap();
+        enter(&mut h.app, true).unwrap();
+        h.frames(5);
+        assert_eq!(calls.load(Ordering::SeqCst), 0);
+        assert!(matches!(h.app.render_workspace.path_host, PathHost::NotStarted));
+        assert!(h.app.render_workspace.pending_setup.is_some());
+        choose_gpu_path(&mut h);
+        finish_setup(&mut h);
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        assert!(matches!(h.app.render_workspace.path_host, PathHost::Ready(_)));
+        // The GPU method chosen in Design (a loaded setup) waits for Render.
+        let mut h = Harness::new();
+        h.app.render_workspace.defer_path_host("selected viewport".into(), || Err("not opened".into()));
+        select_image_method(&mut h.app, ImageMethod::GpuRaytrace);
+        h.frames(5);
+        assert!(matches!(h.app.render_workspace.path_host, PathHost::NotStarted));
+    }
+
     #[test]
     fn design_frames_and_document_reset_never_start_the_deferred_path_host() {
         use std::sync::atomic::{AtomicUsize, Ordering};
@@ -884,6 +930,7 @@ mod async_path_host {
         assert!(matches!(h.app.render_workspace.path_host, PathHost::NotStarted));
         assert!(h.app.render_workspace.pending_setup.is_some());
         enter(&mut h.app, true).unwrap();
+        choose_gpu_path(&mut h);
         finish_setup(&mut h);
         assert_eq!(calls.load(Ordering::SeqCst), 1);
         assert!(matches!(h.app.render_workspace.path_host, PathHost::Ready(_)));
@@ -905,6 +952,8 @@ mod async_path_host {
             Err("deliberate device refusal".into())
         });
         sync_backend(&mut h.app);
+        assert!(matches!(h.app.render_workspace.path_host, PathHost::NotStarted));
+        choose_gpu_path(&mut h);
         finish_setup(&mut h);
         assert_eq!(calls.load(Ordering::SeqCst), 1);
         assert!(matches!(h.app.render_workspace.path_host, PathHost::Failed(_)));
@@ -923,6 +972,7 @@ mod async_path_host {
         h.frames(5);
         assert_eq!(h.app.render_workspace.setup_key.as_deref(), Some("selected safe-mode adapter"));
         enter(&mut h.app, true).unwrap();
+        choose_gpu_path(&mut h);
         finish_setup(&mut h);
         let PathHost::Failed(message) = &h.app.render_workspace.path_host else { panic!("expected selected adapter result") };
         assert_eq!(message, "selected adapter unavailable");
